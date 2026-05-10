@@ -2,25 +2,313 @@
 
 > **Not Another Code Reviewer.**
 
-A Claude Code plugin that runs your code through a corporate review pipeline. A Profiler reads your project, interviews you about the phase, and casts a 4–8 persona review committee from a 23-persona library. Peers review at the code level, departments hunt for gaps, and leadership grades alignment to your stated aims.
+A Claude Code plugin that runs your code through a corporate review pipeline. A **Profiler** reads your project, interviews you about the phase, and casts a 4–8 persona review committee from a 23-persona library. **Peers** review at the code level, **departments** hunt for gaps, and **leadership** grades alignment to your stated aims. An **Aggregator** synthesizes the holistic verdict — no math, no averaging, just Opus reasoning over the committee's reports.
 
-**Status:** v0.1.0 — under construction. Full README ships with v0.1.0 release.
+The output is a live terminal stream while the pipeline runs and a fully-detailed markdown report saved at `.review/reports/<id>.md`. See [`examples/`](examples/) for sample reports.
 
-## Install
+---
 
-```bash
-claude --plugin crucible
-```
+## Why this exists
 
-(Marketplace listing pending; install from this repo's local clone in the meantime.)
+Every Claude Code plugin's reviewer fans out agents in parallel and aggregates their findings. Crucible is structurally different in three ways:
+
+1. **Adaptive cast.** A Profiler reads your project and picks the right reviewers from a 23-persona library. A Next.js auth refactor casts TypeScript + SQL + Security + Backend + Database + Architect + PM. A PyTorch training change casts Python + Quality + Data-ML + Performance + Architect + PM. The committee fits the work.
+2. **Three altitudes.** Stage 1 peers review at the **code** level (idioms, bugs, quality). Stage 2 cross-functional reviewers hunt for **gaps** (security, performance, accessibility, observability — domain-specific lenses). Stage 3 leadership reasons at the **strategic** level (architectural coherence, aim alignment).
+3. **Aim alignment.** A `lead-project-manager` persona reads your `.review/aims.md` — written interactively by the Profiler — and grades the change against your stated success criteria. Nobody else does this. Your code isn't graded in a vacuum; it's graded against what you said you were trying to do.
+
+The result: every persona reasons in their lane, the stages hand off structured findings, and one final reasoning agent synthesizes everything into a single score, verdict, and curated executive summary. No mechanical roll-up; the Aggregator weighs signals as a thoughtful executive would when reading a 7-person review committee.
+
+---
 
 ## Quick start
+
+```bash
+# Local install (until marketplace listing lands):
+git clone https://github.com/hsozer00/crucible.git
+claude --plugin-dir ./crucible
+```
+
+Then, in any project directory:
 
 ```bash
 cd your-project
 /crucible
 ```
 
+Optional commands:
+
+```bash
+/crucible-aims      # refresh .review/aims.md without running a full review
+/crucible-history   # list past reviews stored in .review/reports/
+```
+
+The first run of `/crucible` will:
+
+1. Read your project files (file tree, README, language manifests, recent commits).
+2. Detect project type (web-app, api, ml-pipeline, cli, library, mobile, data-pipeline, mixed).
+3. Interview you about the phase: goal, success criteria, non-goals, constraints.
+4. Write `.review/aims.md` and update `.gitignore` if needed.
+5. Ask what to review (full project, phase, files, branch diff).
+6. Cast the committee and confirm with you before dispatching.
+7. Run the 5-stage pipeline and write the report.
+
+Subsequent runs reuse `.review/aims.md` (with a "still accurate?" prompt).
+
+---
+
+## What it does — the 5-stage pipeline
+
+```
+                User: /crucible from project dir
+                            │
+                            ▼
+ STAGE 0  ┌──────────────────────────────────────┐
+   ░░░    │  PROFILER  (Sonnet 4.6)              │
+          │  Reads project, interviews user,     │
+          │  casts the committee, partitions     │
+          │  files per persona                   │
+          └──────────────────┬───────────────────┘
+                             │ casting roster
+                             ▼
+ STAGE 1  ┌──────────────────────────────────────┐
+   ███    │  PEER engineers (Haiku/Sonnet × 3-5) │
+          │  Code-level: idioms, bugs, quality   │
+          └──────────────────┬───────────────────┘
+                             │ stage-1 findings
+                             ▼
+ STAGE 2  ┌──────────────────────────────────────┐
+   ███    │  CROSS-FUNCTIONAL  (Sonnet × 2-4)    │
+          │  Gap-level: security, perf, infra,   │
+          │  privacy, observability, etc.        │
+          └──────────────────┬───────────────────┘
+                             │ stage-1 + stage-2
+                             ▼
+ STAGE 3  ┌──────────────────────────────────────┐
+   ███    │  LEADERSHIP  (Opus × 2)              │
+          │  Architect: ADR verdict              │
+          │  PM: aim-alignment grade             │
+          └──────────────────┬───────────────────┘
+                             │ all stage findings
+                             ▼
+ STAGE 4  ┌──────────────────────────────────────┐
+   ███    │  AGGREGATOR  (Opus)                  │
+          │  Holistic score + verdict +          │
+          │  curated executive summary           │
+          └──────────────────┬───────────────────┘
+                             │
+                             ▼
+              Live terminal stream (compact)
+              + .review/reports/<id>.md (detailed)
+```
+
+**Key invariants:**
+- Within a stage, personas run **in parallel** and **never see each other's findings**.
+- Across stages, handoff is via **structured JSON**. Stage 2 reads Stage 1's findings; Stage 3 reads both; Aggregator reads everything plus the aims snapshot.
+- File partitioning is computed by the Profiler. Each persona only sees its assigned scope.
+- No mechanical roll-up — the final score and verdict are reasoned by the Aggregator.
+
+---
+
+## The 23 personas
+
+<details>
+<summary><strong>Stage 1 — Peer code reviewers (10)</strong></summary>
+
+| Persona | Model | Lens |
+|---|---|---|
+| `peer-python-reviewer` | Haiku 4.5 | PEP 8, idioms, type hints, common pitfalls |
+| `peer-typescript-reviewer` | Sonnet 4.6 | Type safety, async correctness, strict-mode patterns |
+| `peer-go-reviewer` | Haiku 4.5 | Idiomatic Go, error handling, concurrency |
+| `peer-rust-reviewer` | Sonnet 4.6 | Ownership, lifetimes, `unsafe` audit |
+| `peer-java-kotlin-reviewer` | Sonnet 4.6 | JVM idioms, Spring/Android patterns |
+| `peer-c-cpp-reviewer` | Sonnet 4.6 | Memory safety, modern C++ idioms, UB hunting |
+| `peer-swift-reviewer` | Haiku 4.5 | Swift idioms, iOS patterns |
+| `peer-sql-reviewer` | Haiku 4.5 | Schema, queries, indexing, migration safety |
+| `peer-quality-engineer` | Sonnet 4.6 | Test coverage, edge cases, missing assertions |
+| `peer-readability-engineer` | Haiku 4.5 | Naming, structure, function size, comment quality |
+
+</details>
+
+<details>
+<summary><strong>Stage 2 — Cross-functional gap reviewers (11)</strong></summary>
+
+| Persona | Model | Lens |
+|---|---|---|
+| `team-security-reviewer` | Sonnet 4.6 | OWASP, auth flaws, secret leakage, crypto misuse |
+| `team-frontend-reviewer` | Sonnet 4.6 | UI/UX bugs, state, rendering, framework patterns |
+| `team-backend-reviewer` | Sonnet 4.6 | Server logic, request handling, error paths, idempotency |
+| `team-network-reviewer` | Sonnet 4.6 | API contracts, retries, timeouts, idempotency over the wire |
+| `team-database-reviewer` | Sonnet 4.6 | Schema, query plans, migrations, indexing |
+| `team-devops-infra-reviewer` | Sonnet 4.6 | CI/CD, IaC, secrets management, deployment safety |
+| `team-performance-reviewer` | Sonnet 4.6 | Cross-system bottlenecks, capacity, hot paths |
+| `team-accessibility-reviewer` | Sonnet 4.6 | WCAG, semantic HTML, keyboard support |
+| `team-observability-reviewer` | Sonnet 4.6 | Logging, metrics, tracing, alertability |
+| `team-privacy-compliance-reviewer` | Sonnet 4.6 | PII handling, GDPR-style rights, retention |
+| `team-data-ml-reviewer` | Sonnet 4.6 | Data quality, training correctness, reproducibility |
+
+</details>
+
+<details>
+<summary><strong>Stage 3 — Leadership (2)</strong></summary>
+
+| Persona | Model | Output style |
+|---|---|---|
+| `lead-senior-architect` | Opus 4.7 | ADR-style verdict (Context / Decision / Consequences / Recommendation) |
+| `lead-project-manager` | Opus 4.7 | Aim alignment grade + scope discipline memo |
+
+</details>
+
+Each persona prompt is 250–400 lines of authored content covering identity, lens, in-scope concerns, out-of-scope delegation, output contract, reasoning approach, anti-patterns, and few-shot examples grounded in the test fixtures. See [`agents/`](agents/) for all 25 agent definitions (23 personas + Profiler + Aggregator).
+
+---
+
+## What the output looks like
+
+Live terminal stream while running:
+
+```
+🔥 Crucible — Project Review Pipeline
+
+[Stage 0] Profiler reading project...
+  ✓ Detected: Next.js + Prisma web app (TypeScript, SQL)
+  ✓ Aims: .review/aims.md (created)
+  ✓ Scope: auth module rewrite — 8 files
+
+  Casting committee:
+    Stage 1 → peer-typescript-reviewer, peer-sql-reviewer, peer-quality-engineer
+    Stage 2 → team-security-reviewer, team-backend-reviewer, team-database-reviewer
+    Stage 3 → lead-senior-architect, lead-project-manager
+
+[Stage 1] Peer code review (3 reviewers, parallel)...
+  ✓ peer-typescript-reviewer — 7/10 concerns (4 findings)
+  ✓ peer-sql-reviewer — 9/10 approve  (1 finding)
+  ✓ peer-quality-engineer — 5/10 concerns (6 findings — low test coverage)
+
+[Stage 2] Cross-functional (3 reviewers, parallel)...
+  ✓ team-security-reviewer — 6/10 concerns (2 high)
+  ✓ team-backend-reviewer — 7/10 concerns (3 medium)
+  ✓ team-database-reviewer — 8/10 approve  (1 finding)
+
+[Stage 3] Leadership (2 reviewers, parallel)...
+  ✓ lead-senior-architect — ADR: approved with conditions
+  ✓ lead-project-manager — aim alignment: 8/10
+
+[Stage 4] Aggregator synthesizing...
+
+──────────────────────────────────────────────────
+📊 FINAL VERDICT: 7.1/10 — Conditional Approval
+──────────────────────────────────────────────────
+
+What's good:
+  • SQL migrations are clean and reversible
+  • Backend API contracts well-defined
+  • Database schema strong
+
+What's concerning:
+  • Session tokens stored where client JS can read them (security)
+  • Auth tests cover only happy paths (quality)
+  • No rate limiting on /login (security)
+
+Key notes:
+  🛡️  team-security-reviewer: "Move session storage to httpOnly cookies before merge."
+  🏗️  lead-senior-architect: "Auth boundary is right; storage decision is a 1-day fix."
+  📋 lead-project-manager: "Phase aim achieved; one security gap blocks 'production-ready'."
+
+📁 Full report: .review/reports/2026-05-10-1430-auth-refactor.md
+   Wall-clock: 5m 12s · Estimated cost: $0.74
+```
+
+The saved markdown report is fully detailed — every persona's full findings, scoring, reasoning, and stage-handoff notes are preserved, plus the aims snapshot, casting roster, and run metadata. See [`examples/nextjs-auth-refactor.md`](examples/nextjs-auth-refactor.md) for a complete demo.
+
+---
+
+## Sample reports
+
+- [`examples/nextjs-auth-refactor.md`](examples/nextjs-auth-refactor.md) — Next.js + Prisma auth module review
+- [`examples/ml-training-loop.md`](examples/ml-training-loop.md) — PyTorch training pipeline review
+- [`examples/go-api-service.md`](examples/go-api-service.md) — Go HTTP service review
+
+Each is a representative output of `/crucible` on the corresponding test fixture under [`tests/fixtures/`](tests/fixtures/), where the fixtures contain deliberate gaps for the personas to find.
+
+---
+
+## Costs
+
+Crucible uses **per-persona model tiering** to keep cost reasonable while preserving quality where reasoning matters:
+
+| Stage | Model | Why |
+|---|---|---|
+| Profiler | Sonnet 4.6 | Strong tool use + interview ergonomics |
+| Stage 1 (mixed) | Haiku 4.5 / Sonnet 4.6 | Pattern-rich language reviewers on Haiku; reasoning-heavy ones (Rust, Java/Kotlin, C/C++, TypeScript, Quality) on Sonnet |
+| Stage 2 | Sonnet 4.6 | Gap-finding requires synthesis across files + prior findings |
+| Stage 3 | Opus 4.7 | Strategic judgment, ADR-quality reasoning, aim alignment |
+| Aggregator | Opus 4.7 | Holistic synthesis of 7–11 reports + aims |
+
+**Typical run cost:** ~$0.75–$1.00 at API rates. Comfortably within Claude Max usage budget for daily use.
+
+**No Opus access (Pro tier)?** The plugin detects this and falls back: Stage 3 + Aggregator run on Sonnet 4.6 with a maintained-rigor note in their prompts. Quality is somewhat lower at the strategic layer; this is documented behavior.
+
+---
+
+## Configuration
+
+V1 ships with zero required configuration. Optional per-project overrides via `.review/config.yaml`:
+
+```yaml
+# .review/config.yaml — all keys optional
+casting_overrides:
+  always_include:
+    - team-security-reviewer
+  never_include:
+    - team-accessibility-reviewer
+model_overrides:
+  stage_1: claude-sonnet-4-6   # promote all Stage 1 peers to Sonnet
+  stage_3: claude-opus-4-7
+report_dir: .review/reports
+```
+
+Override behavior is deferred to v0.2.0; v0.1.0 reads the file but does not yet act on it.
+
+---
+
+## Roadmap
+
+### v0.1.0 (current)
+- Full 23-persona library
+- `/crucible`, `/crucible-aims`, `/crucible-history`
+- Three demo example reports
+- Schema + structural validation tests
+
+### v0.2.0 (next)
+- Persona prompt polish (each persona's quality-review backlog)
+- `.review/config.yaml` actively honored
+- GitHub PR comment integration via `gh` CLI
+
+### v0.3.0 and beyond
+- Adaptive persona generation (Profiler proposes a custom persona when library is insufficient)
+- Cost cap / budget enforcement (`--max-cost 0.50`)
+- Monorepo / multi-package awareness
+- "Devil's advocate" mode for stress-testing consensus
+- IDE extension (Cursor, VS Code)
+
+---
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for guidance on adding a new persona, the persona authoring pattern, and the test harness.
+
+Bug reports, feedback, and persona ideas are very welcome. Open an issue with: plugin version, Claude Code version, the project type Profiler detected, and (if applicable) the casting roster from `.review/runs/<id>/roster.json`.
+
+---
+
 ## License
 
 MIT. See [LICENSE](LICENSE).
+
+---
+
+## Author
+
+Built by [Hasan Sozer](https://github.com/hsozer00) — 4th year AI & Data Engineering student at Istanbul Technical University. Designed and authored across two sessions using Claude Code with the Superpowers brainstorming + writing-plans + subagent-driven-development skills.
+
+If Crucible is useful to you, a star on GitHub helps it find more users. Feedback on LinkedIn or via GitHub issues is the fastest way to influence the v0.2.0 roadmap.
