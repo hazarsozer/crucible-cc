@@ -1,0 +1,64 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/hsozer00/crucible/schemas/casting-roster.schema.json",
+  "title": "CastingRoster",
+  "type": "object",
+  "required": [
+    "review_id", "started_at", "project_profile", "review_scope",
+    "aims_snapshot_path", "casting", "casting_reasoning"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "review_id": { "type": "string", "minLength": 1 },
+    "started_at": { "type": "string", "format": "date-time" },
+    "project_profile": {
+      "type": "object",
+      "required": ["type", "languages"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["web-app", "api", "ml-pipeline", "cli", "library", "mobile", "data-pipeline", "mixed"]
+        },
+        "languages": { "type": "array", "items": { "type": "string" } },
+        "frameworks": { "type": "array", "items": { "type": "string" } },
+        "datastores": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "review_scope": {
+      "type": "object",
+      "required": ["kind", "description", "files"],
+      "properties": {
+        "kind": { "type": "string", "enum": ["full", "phase", "files", "diff"] },
+        "description": { "type": "string" },
+        "files": { "type": "array", "items": { "type": "string" } },
+        "diff_source": { "type": "string" }
+      }
+    },
+    "aims_snapshot_path": { "type": "string" },
+    "casting": {
+      "type": "object",
+      "required": ["stage_1", "stage_2", "stage_3"],
+      "properties": {
+        "stage_1": { "type": "array", "items": { "$ref": "#/$defs/CastEntry" } },
+        "stage_2": { "type": "array", "items": { "$ref": "#/$defs/CastEntry" } },
+        "stage_3": { "type": "array", "items": { "$ref": "#/$defs/CastEntry" } }
+      }
+    },
+    "casting_reasoning": { "type": "string", "minLength": 1 }
+  },
+  "$defs": {
+    "CastEntry": {
+      "type": "object",
+      "required": ["persona", "files"],
+      "properties": {
+        "persona": { "type": "string", "pattern": "^(profiler|aggregator|peer-|team-|lead-).*" },
+        "files": {
+          "oneOf": [
+            { "type": "array", "items": { "type": "string" } },
+            { "type": "string", "enum": ["all"] }
+          ]
+        }
+      }
+    }
+  }
+}

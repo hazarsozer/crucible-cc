@@ -45,3 +45,38 @@ def test_persona_finding_example_validates(schemas_dir: Path) -> None:
         "stage_handoff_notes": "Architect should weigh in on session storage strategy."
     }
     jsonschema.validate(example, schema)
+
+
+def test_casting_roster_example_validates(schemas_dir: Path) -> None:
+    schema = json.loads((schemas_dir / "casting-roster.schema.json").read_text())
+    example = {
+        "review_id": "2026-05-10-1430-auth-refactor",
+        "started_at": "2026-05-10T14:30:00Z",
+        "project_profile": {
+            "type": "web-app",
+            "languages": ["typescript", "sql"],
+            "frameworks": ["nextjs", "prisma"],
+            "datastores": ["postgres"]
+        },
+        "review_scope": {
+            "kind": "phase",
+            "description": "auth module rewrite",
+            "files": ["app/auth/**", "prisma/migrations/2026*.sql"],
+            "diff_source": "branch:auth-rewrite vs main"
+        },
+        "aims_snapshot_path": ".review/aims.md",
+        "casting": {
+            "stage_1": [
+                {"persona": "peer-typescript-reviewer", "files": ["app/auth/*.ts"]}
+            ],
+            "stage_2": [
+                {"persona": "team-security-reviewer", "files": ["app/auth/**"]}
+            ],
+            "stage_3": [
+                {"persona": "lead-senior-architect", "files": "all"},
+                {"persona": "lead-project-manager", "files": "all"}
+            ]
+        },
+        "casting_reasoning": "TypeScript-first project; security-sensitive auth."
+    }
+    jsonschema.validate(example, schema)
