@@ -25,3 +25,7 @@ venv/
 
 # Crucible's own runtime output (when dogfooding the plugin on this repo)
 .review/
+
+# Allow fixture .review directories (they ship aims files for E2E tests)
+!tests/fixtures/*/.review/
+!tests/fixtures/*/.review/**
