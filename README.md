@@ -56,6 +56,25 @@ Subsequent runs reuse `.review/aims.md` (with a "still accurate?" prompt).
 
 ---
 
+## ⚠️ When NOT to use `/crucible`
+
+Crucible runs **5 stages and 4–8 specialized agents** per review. It is not another lightweight reviewer — it is a corporate-review simulation, and that shape costs tokens.
+
+**Use `/crucible` for:**
+- Full-project reviews (initial audit, pre-release, milestone gate)
+- Partial-implementation reviews (a feature, a phase, a refactor in flight)
+
+**Don't use `/crucible` for:**
+- A single script or one-file change
+- Trivial PRs or one-line tweaks
+- Anything where one specialist's perspective is enough
+
+For those, **call a specific persona directly** via the Task tool — `crucible:peer-python-reviewer`, `crucible:team-security-reviewer`, `crucible:lead-senior-architect`, etc. The full list of 23 personas is below; each is independently invokable. The pipeline is the heavyweight; individual personas are the scalpel.
+
+This guidance is qualitative for v0.1.0. Concrete cost numbers and a recommended-scope threshold (e.g. "≥N files") will land in v0.1.1 once we have measured runs.
+
+---
+
 ## What it does — the 5-stage pipeline
 
 ```
