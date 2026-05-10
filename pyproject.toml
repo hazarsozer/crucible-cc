@@ -1,0 +1,19 @@
+[project]
+name = "crucible-tests"
+version = "0.1.0"
+description = "Test harness for the Crucible Claude Code plugin"
+requires-python = ">=3.12"
+dependencies = [
+  "jsonschema>=4.21",
+  "pyyaml>=6.0",
+]
+
+[dependency-groups]
+dev = [
+  "pytest>=8.0",
+  "pytest-xdist>=3.5",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-v --tb=short"
