@@ -3,7 +3,7 @@
 **Status:** Approved (brainstorming output)
 **Date:** 2026-05-10
 **Name:** Crucible — *Not Another Code Reviewer*
-**Author:** Hasan Sozer (`hsozer00@gmail.com`)
+**Author:** Hazar Sozer (`hsozer00@gmail.com`)
 **Target distribution:** Public GitHub repo + Claude Code plugin marketplace
 
 ---
@@ -589,7 +589,7 @@ The report is the durable artifact — every persona's reasoning is preserved, n
 | No language matched in Stage 1 cast (rare; e.g. all-config-file PR) | Profiler casts only `quality-engineer` + `readability-engineer` for Stage 1, notes the limitation. |
 | Detected project type is `mixed` and ambiguous | Profiler asks user to pick the dominant type explicitly. |
 | Diff exceeds reasonable size (e.g. >5000 lines) | Profiler warns user, recommends scoping to a phase, but allows continuation if user insists. |
-| User has no Opus access (Pro tier) | Plugin detects and falls back: Stage 3 + Aggregator on Sonnet 4.6. README documents the fallback. |
+| User on Pro plan with tight usage budget | No model substitution needed (Pro has Opus access). README recommends phase- or file-scoped reviews for heavy use. |
 | Persona returns invalid JSON | Orchestrator retries once with stricter format prompt; if still invalid, marks as `failed_format` and proceeds. |
 
 ---

@@ -244,9 +244,7 @@ Crucible uses **per-persona model tiering** to keep cost reasonable while preser
 | Stage 3 | Opus 4.7 | Strategic judgment, ADR-quality reasoning, aim alignment |
 | Aggregator | Opus 4.7 | Holistic synthesis of 7–11 reports + aims |
 
-**Typical run cost:** ~$0.75–$1.00 at API rates. Comfortably within Claude Max usage budget for daily use.
-
-**No Opus access (Pro tier)?** The plugin detects this and falls back: Stage 3 + Aggregator run on Sonnet 4.6 with a maintained-rigor note in their prompts. Quality is somewhat lower at the strategic layer; this is documented behavior.
+**Typical run cost:** ~$0.75–$1.00 at API rates. Crucible runs comfortably on Claude Pro and Max plans — Pro has Opus access with usage limits, so heavy users may want to space out runs or scope reviews tighter (a phase review casts ~5 personas vs. ~9 for a full-project review).
 
 ---
 
@@ -309,6 +307,6 @@ MIT. See [LICENSE](LICENSE).
 
 ## Author
 
-Built by [Hasan Sozer](https://github.com/hazarsozer) — 4th year AI & Data Engineering student at Istanbul Technical University. Designed and authored across two sessions using Claude Code with the Superpowers brainstorming + writing-plans + subagent-driven-development skills.
+Built by [Hazar Sozer](https://github.com/hazarsozer) — 4th year AI & Data Engineering student at Istanbul Technical University. Designed and authored across two sessions using Claude Code with the Superpowers brainstorming + writing-plans + subagent-driven-development skills.
 
 If Crucible is useful to you, a star on GitHub helps it find more users. Feedback on LinkedIn or via GitHub issues is the fastest way to influence the v0.2.0 roadmap.

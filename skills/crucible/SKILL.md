@@ -367,7 +367,7 @@ Do not parallelize across stages; stage handoff is strictly sequential because S
 
 ## Notes on cost and tier
 
-Per spec §3.3, the typical run uses Haiku 4.5 for some Stage 1 peers, Sonnet 4.6 for others + all Stage 2 + Profiler, and Opus 4.7 for Stage 3 + Aggregator. If the user lacks Opus access (Pro tier), fall back to Sonnet 4.6 for Stage 3 and Aggregator: when dispatching, append to the prompt: `Note: Opus is unavailable for this run; you are operating on Sonnet 4.6. Maintain rigor.`
+Per spec §3.3, the typical run uses Haiku 4.5 for some Stage 1 peers, Sonnet 4.6 for others + all Stage 2 + Profiler, and Opus 4.7 for Stage 3 + Aggregator. Both Pro and Max plans support Opus, so no model substitution is needed in the normal case. Pro users with tight usage budgets should prefer phase- or file-scoped reviews over full-project ones (the Profiler will cast a smaller committee).
 
 ## Notes on idempotence
 

@@ -31,5 +31,5 @@ First public release.
 ### Notes
 
 - Configuration via `.review/config.yaml` is parsed but not yet honored; full override behavior ships in v0.2.0.
-- Pro-tier users without Opus access will see Stage 3 + Aggregator fall back to Sonnet 4.6 with a maintained-rigor note.
+- Runs on Claude Pro and Max plans; Opus is available on both tiers (Pro has usage limits — scope reviews tighter for heavy use).
 - Quality-review polish backlog (per-persona nits surfaced during authoring) is tracked for v0.2.0.
