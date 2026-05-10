@@ -80,3 +80,30 @@ def test_casting_roster_example_validates(schemas_dir: Path) -> None:
         "casting_reasoning": "TypeScript-first project; security-sensitive auth."
     }
     jsonschema.validate(example, schema)
+
+
+def test_final_report_example_validates(schemas_dir: Path) -> None:
+    schema = json.loads((schemas_dir / "final-report.schema.json").read_text())
+    example = {
+        "review_id": "2026-05-10-1430-auth-refactor",
+        "completed_at": "2026-05-10T14:38:22Z",
+        "final_score": 7.1,
+        "final_verdict": "conditional_approval",
+        "verdict_reasoning": "Strong technical execution; one high-severity security gap blocks 'production-ready' status.",
+        "executive_summary": "The auth module rewrite is structurally sound, with clean SQL migrations and good API contract design. Two areas demand attention before merge: session storage strategy and rate limiting on the login route.",
+        "what_is_good": ["SQL migrations are clean and reversible"],
+        "what_is_concerning": ["Session tokens in localStorage"],
+        "key_quotes": [
+            {"persona": "team-security-reviewer", "quote": "Move session storage to httpOnly cookies before merge."}
+        ],
+        "stage_reports": {"stage_1": [], "stage_2": [], "stage_3": []},
+        "aims_snapshot": "# Project Aims\n...",
+        "casting_roster": {},
+        "metadata": {
+            "plugin_version": "0.1.0",
+            "wall_clock_seconds": 312,
+            "models_used": ["sonnet-4-6", "haiku-4-5", "opus-4-7"],
+            "estimated_cost_usd": 0.74
+        }
+    }
+    jsonschema.validate(example, schema)

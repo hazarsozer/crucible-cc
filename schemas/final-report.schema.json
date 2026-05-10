@@ -1,0 +1,57 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/hsozer00/crucible/schemas/final-report.schema.json",
+  "title": "FinalReport",
+  "type": "object",
+  "required": [
+    "review_id", "completed_at", "final_score", "final_verdict",
+    "verdict_reasoning", "executive_summary", "what_is_good",
+    "what_is_concerning", "key_quotes", "stage_reports",
+    "aims_snapshot", "casting_roster", "metadata"
+  ],
+  "properties": {
+    "review_id": { "type": "string" },
+    "completed_at": { "type": "string", "format": "date-time" },
+    "final_score": { "type": "number", "minimum": 0, "maximum": 10 },
+    "final_verdict": {
+      "type": "string",
+      "enum": ["approved", "conditional_approval", "blocked"]
+    },
+    "verdict_reasoning": { "type": "string", "minLength": 1 },
+    "executive_summary": { "type": "string", "minLength": 1 },
+    "what_is_good": { "type": "array", "items": { "type": "string" } },
+    "what_is_concerning": { "type": "array", "items": { "type": "string" } },
+    "key_quotes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["persona", "quote"],
+        "properties": {
+          "persona": { "type": "string" },
+          "quote": { "type": "string" }
+        }
+      }
+    },
+    "stage_reports": {
+      "type": "object",
+      "required": ["stage_1", "stage_2", "stage_3"],
+      "properties": {
+        "stage_1": { "type": "array" },
+        "stage_2": { "type": "array" },
+        "stage_3": { "type": "array" }
+      }
+    },
+    "aims_snapshot": { "type": "string" },
+    "casting_roster": { "type": "object" },
+    "metadata": {
+      "type": "object",
+      "required": ["plugin_version", "wall_clock_seconds", "models_used", "estimated_cost_usd"],
+      "properties": {
+        "plugin_version": { "type": "string" },
+        "wall_clock_seconds": { "type": "integer", "minimum": 0 },
+        "models_used": { "type": "array", "items": { "type": "string" } },
+        "estimated_cost_usd": { "type": "number", "minimum": 0 }
+      }
+    }
+  }
+}
