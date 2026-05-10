@@ -1,0 +1,49 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/hsozer00/crucible/schemas/persona-finding.schema.json",
+  "title": "PersonaFinding",
+  "type": "object",
+  "required": [
+    "persona", "stage", "model_used", "started_at", "completed_at",
+    "scope_assessed", "verdict", "score", "summary_quote", "findings"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "persona": { "type": "string", "minLength": 1 },
+    "stage": { "type": "integer", "enum": [1, 2, 3] },
+    "model_used": { "type": "string", "minLength": 1 },
+    "started_at": { "type": "string", "format": "date-time" },
+    "completed_at": { "type": "string", "format": "date-time" },
+    "scope_assessed": {
+      "type": "array",
+      "items": { "type": "string" },
+      "minItems": 0
+    },
+    "verdict": { "type": "string", "enum": ["approve", "concerns", "block"] },
+    "score": { "type": "integer", "minimum": 0, "maximum": 10 },
+    "summary_quote": { "type": "string", "minLength": 1, "maxLength": 280 },
+    "findings": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/Finding" }
+    },
+    "stage_handoff_notes": { "type": "string" }
+  },
+  "$defs": {
+    "Finding": {
+      "type": "object",
+      "required": ["severity", "category", "title", "location", "explanation", "suggestion"],
+      "additionalProperties": false,
+      "properties": {
+        "severity": {
+          "type": "string",
+          "enum": ["critical", "high", "medium", "low"]
+        },
+        "category": { "type": "string", "minLength": 1 },
+        "title": { "type": "string", "minLength": 1, "maxLength": 120 },
+        "location": { "type": "string", "minLength": 1 },
+        "explanation": { "type": "string", "minLength": 1 },
+        "suggestion": { "type": "string", "minLength": 1 }
+      }
+    }
+  }
+}
