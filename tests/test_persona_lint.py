@@ -89,3 +89,54 @@ casting_trigger: always
 ---
 """)
     lint_persona_file(f)
+
+
+def test_all_shipped_personas_pass_lint(repo_root: Path) -> None:
+    """Every persona in agents/ must pass lint."""
+    agents_dir = repo_root / "agents"
+    persona_files = sorted(agents_dir.glob("*.md"))
+    assert persona_files, "no persona files found in agents/"
+    for f in persona_files:
+        # Will raise LintError on failure
+        lint_persona_file(f)
+
+
+def test_persona_library_completeness(repo_root: Path) -> None:
+    """The library ships every persona referenced in the implementation plan."""
+    agents_dir = repo_root / "agents"
+    available = {f.stem for f in agents_dir.glob("*.md")}
+
+    expected = {
+        # Bookends
+        "profiler",
+        "aggregator",
+        # Stage 1 — peers
+        "peer-python-reviewer",
+        "peer-typescript-reviewer",
+        "peer-go-reviewer",
+        "peer-rust-reviewer",
+        "peer-java-kotlin-reviewer",
+        "peer-c-cpp-reviewer",
+        "peer-swift-reviewer",
+        "peer-sql-reviewer",
+        "peer-quality-engineer",
+        "peer-readability-engineer",
+        # Stage 2 — teams
+        "team-security-reviewer",
+        "team-frontend-reviewer",
+        "team-backend-reviewer",
+        "team-network-reviewer",
+        "team-database-reviewer",
+        "team-devops-infra-reviewer",
+        "team-performance-reviewer",
+        "team-accessibility-reviewer",
+        "team-observability-reviewer",
+        "team-privacy-compliance-reviewer",
+        "team-data-ml-reviewer",
+        # Stage 3 — leadership
+        "lead-senior-architect",
+        "lead-project-manager",
+    }
+
+    missing = expected - available
+    assert not missing, f"persona library missing: {sorted(missing)}"
