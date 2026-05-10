@@ -24,8 +24,8 @@ The result: every persona reasons in their lane, the stages hand off structured 
 
 ```bash
 # Local install (until marketplace listing lands):
-git clone https://github.com/hsozer00/crucible.git
-claude --plugin-dir ./crucible
+git clone https://github.com/hazarsozer/crucible-cc.git
+claude --plugin-dir ./crucible-cc
 ```
 
 Then, in any project directory:
@@ -309,6 +309,6 @@ MIT. See [LICENSE](LICENSE).
 
 ## Author
 
-Built by [Hasan Sozer](https://github.com/hsozer00) — 4th year AI & Data Engineering student at Istanbul Technical University. Designed and authored across two sessions using Claude Code with the Superpowers brainstorming + writing-plans + subagent-driven-development skills.
+Built by [Hasan Sozer](https://github.com/hazarsozer) — 4th year AI & Data Engineering student at Istanbul Technical University. Designed and authored across two sessions using Claude Code with the Superpowers brainstorming + writing-plans + subagent-driven-development skills.
 
 If Crucible is useful to you, a star on GitHub helps it find more users. Feedback on LinkedIn or via GitHub issues is the fastest way to influence the v0.2.0 roadmap.

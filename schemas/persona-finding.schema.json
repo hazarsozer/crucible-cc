@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/hsozer00/crucible/schemas/persona-finding.schema.json",
+  "$id": "https://github.com/hazarsozer/crucible-cc/schemas/persona-finding.schema.json",
   "title": "PersonaFinding",
   "type": "object",
   "required": [
