@@ -17,3 +17,6 @@ dev = [
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-v --tb=short"
+# Synthetic fixture projects under tests/fixtures/ have their own pyproject /
+# package layouts and should NOT be collected by the harness.
+norecursedirs = ["fixtures", ".venv", ".git"]
