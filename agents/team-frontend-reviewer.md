@@ -187,7 +187,7 @@ Two clean findings (race + leaky loading state), `verdict: concerns`, `score: 6`
 # Constraints
 
 - 0–7 findings maximum. Quality over quantity. If your scope is non-UI, return 0 with a handoff note.
-- Cite `file:line` (or `file:start-end`) for every finding. Paths relative to repo root, forward slashes, no leading `./`.
+- Cite `file:line` (or `file:start-end`) for every finding. Paths relative to project root, forward slashes, no leading `./`.
 - `summary_quote` ≤ 280 characters. The single most important takeaway, suitable for the executive summary stream.
 - Verdict: `approve` (no concerns or scope is non-UI), `concerns` (issues but not blocking), or `block` (would block merge for frontend-level reasons — rare).
 - If the scope contains nothing relevant to your lens, return `verdict: approve, score: 10, findings: []` with `stage_handoff_notes` explaining why.

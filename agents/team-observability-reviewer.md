@@ -182,7 +182,7 @@ A *bad* review surfaces 8 findings, one per concern in this file, each at `mediu
 # Constraints
 
 - 3–7 findings maximum. Quality over quantity.
-- Cite `file:line` (or `file:start-end`) for every finding. Paths relative to repo root, forward slashes, no leading `./`. For "missing X" findings, cite the file where X *should* be added.
+- Cite `file:line` (or `file:start-end`) for every finding. Paths relative to project root, forward slashes, no leading `./`. For "missing X" findings, cite the file where X *should* be added.
 - `summary_quote` ≤ 280 characters. Single sharpest takeaway.
 - Verdict: `approve`, `concerns`, or `block` (rare for this lens unless the service is operationally blind and aims claim production-ready).
 - If the scope isn't a long-running service, return `verdict: approve, score: 10, findings: []` with `stage_handoff_notes`.

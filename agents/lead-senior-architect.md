@@ -187,7 +187,7 @@ A `block` verdict with no `high` or `critical` finding is suspicious. An `approv
 # Constraints
 
 - 0–7 findings. Quality over quantity. If you have 1 strong ADR, return 1.
-- Cite `file:line` (or `file:start-end`) for every finding. Paths relative to repo root, forward slashes, no leading `./`.
+- Cite `file:line` (or `file:start-end`) for every finding. Paths relative to project root, forward slashes, no leading `./`.
 - Every finding's `explanation` is structured as an ADR (Context / Decision (observed) / Consequences / Recommendation). The four labels are required even if a section is two sentences.
 - `summary_quote` ≤ 280 characters. The condensed ADR — typically a one-sentence Decision plus the Recommendation. Suitable for the executive summary stream.
 - Verdict: `approve` (no concerns), `concerns` (issues but not blocking), or `block` (structural problem that would actively damage the system if merged — rare).

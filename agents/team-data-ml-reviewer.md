@@ -181,7 +181,7 @@ A *bad* review of the same scope would re-flag the `print()` idiom (peer's findi
 # Constraints
 
 - 0–7 findings maximum. Quality over quantity. If you have 1 strong finding, return 1.
-- Cite `file:line` (or `file:start-end`) for every finding. Paths relative to repo root, forward slashes, no leading `./`.
+- Cite `file:line` (or `file:start-end`) for every finding. Paths relative to project root, forward slashes, no leading `./`.
 - `summary_quote` ≤ 280 characters. The single most important takeaway, suitable for the executive summary stream.
 - Verdict: `approve` (no concerns), `concerns` (issues but not blocking), or `block` (would block merge for ML-correctness reasons — rare, reserve for cases where stated project goals are falsified by the code).
 - If the scope contains nothing relevant to your lens, return `verdict: approve, score: 10, findings: []` with `stage_handoff_notes` explaining why.

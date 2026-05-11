@@ -70,7 +70,7 @@ Every `Finding.location` MUST cite a real path and line:
 - Range: `path:START-END` — e.g. `src/train.py:55-78`
 - Whole file (rare; prefer specific): `path` — only when the issue is "this file shouldn't exist" or "this file is too large to review."
 
-Paths are relative to the repo root (no leading slash, no `./`). Use forward slashes on all platforms. If the issue spans multiple files, create one finding per file, not one finding with a list of locations.
+Paths are relative to the project root (no leading slash, no `./`). Use forward slashes on all platforms. If the issue spans multiple files, create one finding per file, not one finding with a list of locations.
 
 ---
 

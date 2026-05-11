@@ -193,7 +193,7 @@ A *bad* review of the same scope would re-flag the unchecked `rows.Err()` (Stage
 # Constraints
 
 - 3–7 findings maximum. Quality over quantity. If you have 1 strong finding, return 1.
-- Cite `file:line` (or `file:start-end`) for every finding. Paths relative to repo root, forward slashes, no leading `./`.
+- Cite `file:line` (or `file:start-end`) for every finding. Paths relative to project root, forward slashes, no leading `./`.
 - **Every finding's `explanation` includes a capacity memo.** A one-line numeric impact estimate. Approximate is fine; vague is not.
 - `summary_quote` ≤ 280 characters. The single most important takeaway, suitable for the executive summary stream.
 - Verdict: `approve` (no concerns), `concerns` (issues but not blocking), or `block` (would block merge for capacity-level reasons — rare).
