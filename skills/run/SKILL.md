@@ -11,19 +11,30 @@ The pipeline has five stages: Profiler (Stage 0) → Peer Code Review (Stage 1) 
 
 ## Setup
 
-1. Generate `review_id` of the form `YYYY-MM-DD-HHMM-<slug>` using the current UTC time. The `<slug>` is derived from the user's review scope description: lowercase, hyphenated, ASCII only, ≤30 characters. If the user has not yet stated a scope, use the placeholder slug `pending`; the Profiler will refine it.
-2. Record `started_at` as an ISO 8601 UTC timestamp.
-3. Print the banner:
+1. **Determine the project root.** Run `pwd` via the Bash tool. The absolute path it returns is `project_root` — the working directory the user invoked Crucible from, and the root of the project under review.
+
+   **`project_root` is NOT `git rev-parse --show-toplevel`.** When the user runs Crucible from a fixture (e.g., `tests/fixtures/go-api/`), a monorepo package, or any nested directory, `project_root` is THAT directory. Using git's toplevel would mis-identify the project: running from `plugin-create/tests/fixtures/go-api/` returns `plugin-create/` as git toplevel, and the Profiler would then read Crucible's README and identify Crucible as the project under review instead of the Go service. **Always use the `pwd` value, never git toplevel.**
+
+   Every subsequent step uses `project_root` as the base path. All `.review/` paths resolve as absolute paths within `project_root`. The Profiler and all other subagents are told the exact `project_root` absolute path in their dispatch prompts — you (the orchestrator) are responsible for substituting the literal absolute path into the prompt before dispatching.
+
+2. Generate `review_id` of the form `YYYY-MM-DD-HHMM-<slug>` using the current UTC time. The `<slug>` is derived from the user's review scope description: lowercase, hyphenated, ASCII only, ≤30 characters. If the user has not yet stated a scope, use the placeholder slug `pending`; the Profiler will refine it.
+3. Record `started_at` as an ISO 8601 UTC timestamp.
+4. Print the banner:
    ```
    🔥 Crucible — Project Review Pipeline
    ```
-4. Create directory `.review/runs/<review_id>/` for transient artifacts.
+5. Create directory `${project_root}/.review/runs/<review_id>/` for transient artifacts.
 
 ## Stage 0 — Profiler
 
 Print: `[Stage 0] Profiler reading project...`
 
-Dispatch the Profiler agent via the Task tool:
+**Before dispatching, substitute `<PROJECT_ROOT>` and `<USER_INVOCATION>` in the prompt below with literal values:**
+
+- `<PROJECT_ROOT>` → the absolute path you captured in Setup step 1 (the result of `pwd`). Example: `/home/user/Dev/my-project/`. This MUST be a real path, not the placeholder string. The most common Profiler dispatch bug is forgetting this substitution and sending the literal `<PROJECT_ROOT>` text — verify the dispatch prompt contains a real absolute path before sending.
+- `<USER_INVOCATION>` → the original `/crucible:run` invocation text including any free-text scope hint the user typed.
+
+Then dispatch the Profiler agent via the Task tool:
 
 ```
 Task(
@@ -32,19 +43,19 @@ Task(
   prompt="""
 You are running as the Profiler agent for Crucible. Read your full system prompt at agents/profiler.md if it has not already been loaded by the harness.
 
-# Working directory
-<absolute path of the user's project>
+# Project root (MANDATORY — this is the project under review; do NOT use git toplevel for nested projects)
+<PROJECT_ROOT>
 
 # User invocation
-<the original /crucible:run invocation, including any free-text scope hint the user typed>
+<USER_INVOCATION>
 
 # Your job
 Follow your full Profiler workflow:
-1. Read project signals (file tree, README, CLAUDE.md, language manifests, recent commits).
+1. Read project signals **inside the project root only — never traverse upward to a parent repo** (file tree, README, CLAUDE.md, language manifests, recent commits scoped via `git log -- .`).
 2. Detect project type, languages, frameworks, datastores, deployment.
-3. Check for existing .review/aims.md — if present, ask "still accurate?"; if missing, run the interview.
-4. Write or update .review/aims.md from templates/aims.md.tpl.
-5. Update .gitignore if .git/ exists and .review/ is not yet ignored.
+3. Check for existing `${project_root}/.review/aims.md` — if present, ask "still accurate?"; if missing, run the interview.
+4. Write or update `${project_root}/.review/aims.md` from templates/aims.md.tpl.
+5. Update `${project_root}/.gitignore` only when `.git/` exists as a directory directly inside the project root.
 6. Ask the user for review scope (full / phase / files / branch diff).
 7. Cast the committee from the 23-persona library and partition files per persona using your File Partitioning Rules.
 8. Display the casting roster + reasoning to the user; ask "Proceed?"

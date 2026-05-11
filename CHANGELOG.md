@@ -28,8 +28,16 @@ First public release.
 - **GitHub Actions CI** running lint + schema + structure tests on every push and PR.
 - **MIT license**, full README with pipeline diagram, CONTRIBUTING guide, and persona authoring pattern.
 
+### Fixed
+
+- **Profiler now uses the cwd passed in its prompt as the project root**, not `git rev-parse --show-toplevel`. Affects nested projects (a fixture inside a parent repo, a monorepo package, an `examples/foo/` subdirectory): previously the Profiler read the parent repo's README and unfiltered git history, identifying the parent as the project under review instead of the cwd. Symptom: running `/crucible:run` from `tests/fixtures/nextjs-auth` made the Profiler ask "What's the overarching goal of this 23-persona code review pipeline plugin?" instead of recognizing the Next.js auth project.
+- **Profiler `.gitignore` update step (step 7) now triggers only when `.git/` is a directory directly inside the project root**, not when the project is anywhere inside a git work tree. Previously, nested projects got a redundant fixture-level `.gitignore` while the parent's `.gitignore` already owned `.review/` policy.
+- **Orchestrator now captures `project_root` via `pwd` in Setup and substitutes a literal absolute path into the Profiler dispatch prompt**, instead of relying on the model to interpret a `<absolute path of the user's project>` placeholder. The placeholder approach worked for the nextjs-auth fixture (the Profiler still found the cwd-relative `.review/aims.md` by accident), but failed on the go-api fixture: the Profiler identified the project as Crucible itself (auto-suggesting "Pre-release audit … publishing to the Claude Code plugin marketplace" as the review goal). Same nested-project bug family as the two above.
+
 ### Notes
 
 - Configuration via `.review/config.yaml` is parsed but not yet honored; full override behavior ships in v0.2.0.
+- Persona output schema (`schemas/persona-finding.schema.json`) `summary_quote` raised from `maxLength: 280` to `500`, and `Finding.title` from `120` to `160`. Aligned to observed real-run outputs (real Sonnet/Opus personas routinely produce 280–330 char headlines).
+- `examples/nextjs-auth-refactor.md` is the real Crucible output from a measured run on the bundled fixture. `examples/ml-training-loop.md` and `examples/go-api-service.md` remain hand-written previews until v0.1.1 measurements land.
 - Runs on Claude Pro and Max plans. **Measured cost on the 7-file `tests/fixtures/nextjs-auth` (10-persona cast): $5–7 API per run, 25–35 min wall time, ~10–15% Max-plan quota burn.** Opus is available on both tiers; Pro caps Opus access, so heavy users should scope reviews tighter (a phase review casts ~5 personas vs. ~10 for a full-project review). Cross-project cost data (Go API, PyTorch, larger codebases) lands in v0.1.1. See the README §Costs section for the per-model split and caveats.
 - Quality-review polish backlog (per-persona nits surfaced during authoring) is tracked for v0.2.0.
