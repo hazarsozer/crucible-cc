@@ -226,6 +226,16 @@ Print:
 
 Print: `[Stage 4] Aggregator synthesizing...`
 
+**Before dispatching, compute the metadata values and substitute them as LITERAL VALUES in the prompt below.** The Aggregator MUST receive real numbers and arrays, never placeholder strings like `<calculated from...>` — if it sees a placeholder it will hallucinate a plausible-looking number, which then appears as fake metrics in the final markdown report.
+
+Compute each value now:
+
+- `<WALL_CLOCK_SECONDS>` → integer seconds from the `started_at` timestamp captured in Setup step 3 to now. Example: if `started_at` was `2026-05-11T19:00:00Z` and now is `2026-05-11T19:18:42Z`, write `1122`.
+- `<MODELS_USED>` → JSON array of unique model identifiers used so far in this run (enumerate each successful persona's `model_used` field, deduplicate). Example: `["claude-sonnet-4-6", "claude-opus-4-7", "claude-haiku-4-5-20251001"]`.
+- `<ESTIMATED_COST_USD>` → **always `0`**. The orchestrator has no reliable way to measure API cost — Claude Code does not expose token-level pricing to skill scripts, and the Aggregator cannot infer it either. Hardcode `0`; the user sees real cost via `/status` in their Claude Code session.
+
+Verify the prompt below contains literal numbers (not `<WALL_CLOCK_SECONDS>` etc.) before sending.
+
 Dispatch the Aggregator subagent:
 
 ```
@@ -252,16 +262,16 @@ You are running as the Aggregator. Your full system prompt is at agents/aggregat
 ## Stage 3 findings
 {json.dumps(stage_3_findings, indent=2)}
 
-## Run metadata
+## Run metadata (substituted by orchestrator — echo through verbatim; DO NOT modify, DO NOT re-estimate)
 {{
   "plugin_version": "0.1.0",
-  "wall_clock_seconds": <calculated from started_at to now, integer>,
-  "models_used": <unique list of all model identifiers used by Profiler + every successful persona>,
-  "estimated_cost_usd": <best-effort estimate, or 0 if unknown>
+  "wall_clock_seconds": <WALL_CLOCK_SECONDS>,
+  "models_used": <MODELS_USED>,
+  "estimated_cost_usd": <ESTIMATED_COST_USD>
 }}
 
 # Output
-Single JSON object conforming to schemas/final-report.schema.json. JSON only — no markdown, no preamble.
+Single JSON object conforming to schemas/final-report.schema.json. JSON only — no markdown, no preamble. Echo the metadata field verbatim; do not re-estimate wall_clock_seconds or estimated_cost_usd. The wall_clock_seconds value above is the truth.
 """
 )
 ```
@@ -282,13 +292,17 @@ Save the (validated or fallback) final report to `.review/runs/<review_id>/final
 
 ### Write the markdown report file
 
-Render the final report through `templates/report.md.tpl`. Substitute every `{{...}}` placeholder with the corresponding field from the final-report JSON. The template uses Handlebars-like `{{#each ...}} ... {{/each}}` blocks for arrays — iterate the array and emit the inner template once per item, substituting `{{this}}` (or the named field for object arrays) with the current item.
+**Follow `templates/report.md.tpl` exactly — do not improvise the structure, do not invent new headings, do not skip or reorder template sections.** The template defines the canonical Crucible report format; output that deviates from it (different heading text, different metadata block style, additional metadata fields the template doesn't declare) creates inconsistent examples for users and breaks consumers that parse the report. If you are tempted to "improve" the template's wording or add a section it doesn't have, **do not** — open an issue against the template instead and ship the template's actual output for this run.
+
+Render by substituting every `{{...}}` placeholder with the corresponding field from the final-report JSON. The template uses Handlebars-like `{{#each ...}} ... {{/each}}` blocks for arrays — iterate the array and emit the inner template once per item, substituting `{{this}}` (or the named field for object arrays) with the current item.
 
 Crucible does not ship a template engine. Implement the substitution inline as you generate the file:
 - For `{{key}}` placeholders, substitute the JSON value directly. If the value is an object or array, format it as readable inline text (e.g., a comma-separated list for arrays of strings; a key-value list for objects).
 - For `{{#each items}} ... {{/each}}` blocks, emit the inner block once per item.
 - For nested-field references like `{{casting_roster.project_profile.type}}`, walk the dotted path through the JSON.
-- Preserve markdown structure exactly — don't reflow lists or headings.
+- Preserve markdown structure exactly — don't reflow lists or headings, don't change heading levels, don't drop blank lines between sections.
+
+The first line of the output MUST start with `# Crucible Review — ` (the literal text from the template's line 1) and the metadata block on line 3 MUST use the italic underscore format (`_Review ID: ... · Generated: ... · Project: ..._`), not a bold-list block.
 
 Write the rendered output to `.review/reports/<review_id>.md`.
 

@@ -127,4 +127,5 @@ _Review ID: {{review_id}} · Generated: {{completed_at}} · Project: {{project_t
 - **Plugin version:** {{metadata.plugin_version}}
 - **Wall-clock:** {{metadata.wall_clock_seconds}}s
 - **Models used:** {{metadata.models_used}}
-- **Estimated cost:** ${{metadata.estimated_cost_usd}}
+
+_API cost is not displayed here. Claude Code does not expose token-level pricing to plugin skill scripts, so any number Crucible printed would be a guess. Run `/status` in your Claude Code session to see real API cost for this run._
