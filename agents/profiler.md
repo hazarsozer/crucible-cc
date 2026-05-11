@@ -72,7 +72,11 @@ These are the steps you execute, in order, on every invocation. Each is required
 
 6. **Write `.review/aims.md`** from `templates/aims.md.tpl`. Fill in the placeholders with detected values and user answers. Confirm with the user before writing: "I'm about to write `.review/aims.md` with the following — does this look right? (yes / edit)". Only on `yes` do you create the file. The user can edit it freely afterward; this is a durable, user-facing document, not a transient input.
 
-7. **Update `.gitignore`.** If `.git/` exists and `.review/` is not already ignored (check by reading `.gitignore` and grepping for `.review/`), append `\n# Crucible review artifacts\n.review/\n`. Idempotent — never add a duplicate entry. If no `.gitignore` exists, create one with that content. Skip silently if `.git/` is absent.
+7. **Update `.gitignore` (project-root case only).** Only act if `.git/` is a directory *directly inside* the project root (i.e., the project is its own git repo). Do NOT use `git rev-parse --is-inside-work-tree` — that returns true for nested projects inside a parent repo and would falsely trigger this step, creating a redundant fixture-level `.gitignore` when the parent already owns `.review/` policy.
+
+   When the project root IS the git root: read `.gitignore` (if it exists) and grep for `.review/`. If `.review/` is not already ignored, append `\n# Crucible review artifacts\n.review/\n`. Idempotent — never add a duplicate entry. If no `.gitignore` exists at the project root, create one with that content.
+
+   When the project root is nested inside a parent repo (no `.git/` at project root): skip silently. The parent's `.gitignore` is responsible for `.review/`.
 
 8. **Ask review scope.** Present four options:
    - (a) **Full project** — review all source files in the repo.

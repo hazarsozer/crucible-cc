@@ -21,7 +21,7 @@
     },
     "verdict": { "type": "string", "enum": ["approve", "concerns", "block"] },
     "score": { "type": "integer", "minimum": 0, "maximum": 10 },
-    "summary_quote": { "type": "string", "minLength": 1, "maxLength": 280 },
+    "summary_quote": { "type": "string", "minLength": 1, "maxLength": 500 },
     "findings": {
       "type": "array",
       "items": { "$ref": "#/$defs/Finding" }
@@ -39,7 +39,7 @@
           "enum": ["critical", "high", "medium", "low"]
         },
         "category": { "type": "string", "minLength": 1 },
-        "title": { "type": "string", "minLength": 1, "maxLength": 120 },
+        "title": { "type": "string", "minLength": 1, "maxLength": 160 },
         "location": { "type": "string", "minLength": 1 },
         "explanation": { "type": "string", "minLength": 1 },
         "suggestion": { "type": "string", "minLength": 1 }

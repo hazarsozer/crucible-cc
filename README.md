@@ -251,6 +251,22 @@ Each is a representative output of `/crucible:run` on the corresponding test fix
 
 ---
 
+## Why subagents show "no tools used" — the orchestration pattern
+
+When you watch a Crucible run in the Claude Code UI, the orchestrator (main thread) does all visible file I/O — reads, writes, grep — while each dispatched subagent (the personas) shows "no tools used." This is correct by design, not a bug.
+
+The orchestrator pastes every persona's input into the dispatch prompt as inline content: the aims snapshot, the persona's scope file contents, prior-stage findings, and the casting reasoning. Each persona's output is a single JSON object validated against `schemas/persona-finding.schema.json`. The orchestrator parses the JSON return value and writes it to `.review/runs/<id>/stage_X/<persona>.json` itself.
+
+Three reasons this is the right pattern:
+
+1. **Schema validation.** The orchestrator can `JSON.parse` + schema-validate each persona's output and retry on malformed responses. If subagents wrote files directly, you'd lose the validation gate.
+2. **Cache efficiency.** The inline file payload is cached once and reused across every persona that shares scope (typically 5–7× cache-reuse ratio on a 10-persona run). If each persona called `Read` themselves, you'd lose the orchestrator-level cache and pay full input cost per persona — total cost would roughly double.
+3. **Reproducibility.** A persona's output is a pure function of its prompt. No side-effects, no race conditions on `.review/`, no "which persona wrote first" ambiguity.
+
+The subagents are not waiting on permissions — they inherit the orchestrator's full tool set. They simply don't need tools for the inline-context + JSON-output pattern. This is why the 25–35 minute wall time is dominated by Sonnet/Opus reasoning, not tool-call round-trips.
+
+---
+
 ## Costs
 
 Crucible uses **per-persona model tiering** to keep cost reasonable while preserving quality where reasoning matters:
