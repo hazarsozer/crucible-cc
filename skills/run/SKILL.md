@@ -18,7 +18,7 @@ The pipeline has five stages: Profiler (Stage 0) → Peer Code Review (Stage 1) 
    Every subsequent step uses `project_root` as the base path. All `.review/` paths resolve as absolute paths within `project_root`. The Profiler and all other subagents are told the exact `project_root` absolute path in their dispatch prompts — you (the orchestrator) are responsible for substituting the literal absolute path into the prompt before dispatching.
 
 2. Generate `review_id` of the form `YYYY-MM-DD-HHMM-<slug>` using the current UTC time. The `<slug>` is derived from the user's review scope description: lowercase, hyphenated, ASCII only, ≤30 characters. If the user has not yet stated a scope, use the placeholder slug `pending`; the Profiler will refine it.
-3. Record `started_at` as an ISO 8601 UTC timestamp.
+3. Record the run start time in BOTH formats. Run `date -u +%s` via the Bash tool to get `started_at_unix_seconds` (an integer; the canonical timestamp used for wall-clock math throughout the pipeline). Convert that to ISO 8601 for the `started_at` field used in the final report (or run a second Bash call `date -u -Iseconds`). Both values come from the same moment; the unix integer is purely for arithmetic, the ISO string is purely for display and JSON serialization.
 4. Print the banner:
    ```
    🔥 Crucible — Project Review Pipeline
@@ -287,6 +287,17 @@ Validate the Aggregator output against `schemas/final-report.schema.json`. On fa
 - `stage_reports`, `aims_snapshot`, `casting_roster`, `metadata`: populate as normal.
 
 Save the (validated or fallback) final report to `.review/runs/<review_id>/final-report.json`.
+
+### Re-measure end-to-end wall_clock_seconds
+
+The `wall_clock_seconds` value you passed to the Aggregator at dispatch time captured only the Profiler + Stage 1–3 portion of the run; the Aggregator's own thinking and writing time (typically 5–9 minutes) is not yet counted. Before rendering the markdown report, re-measure to capture the true end-to-end wall:
+
+1. Run `date -u +%s` via the Bash tool to get the current unix timestamp as an integer.
+2. Compute `end_to_end_wall_seconds = current_unix_seconds - started_at_unix_seconds` (the value you captured in Setup step 3).
+3. Update `metadata.wall_clock_seconds` in the in-memory final-report JSON to `end_to_end_wall_seconds`.
+4. Re-write `.review/runs/<review_id>/final-report.json` with the updated metadata so the on-disk JSON matches the markdown that will be rendered.
+
+The previously-emitted dispatch-time value was correct at the moment of dispatch but is now stale; the markdown report needs the true end-to-end wall. Users can cross-check against `/status` in their Claude Code session, which reports the same end-to-end wall from a different vantage point.
 
 ## Final Output
 

@@ -245,9 +245,9 @@ The saved markdown report is fully detailed — every persona's full findings, s
 
 - [`examples/nextjs-auth-refactor.md`](examples/nextjs-auth-refactor.md) — Next.js + Prisma auth module review *(real Crucible output, 2/10 blocked, $5.22 / 25 min run)*
 - [`examples/go-api-service.md`](examples/go-api-service.md) — Go HTTP service review *(real Crucible output, 2.5/10 blocked, $5.60 / 23 min run)*
-- [`examples/ml-training-loop.md`](examples/ml-training-loop.md) — PyTorch training pipeline review *(hand-written preview, will be regenerated from a real run in v0.1.1)*
+- [`examples/ml-training-loop.md`](examples/ml-training-loop.md) — PyTorch training pipeline review *(real Crucible output, 3.5/10 blocked, $4.78 / 20 min run)*
 
-The first two are unedited markdown reports produced by `/crucible:run` against the corresponding test fixtures under [`tests/fixtures/`](tests/fixtures/), where the fixtures contain deliberate gaps for the personas to find. Run Crucible on either fixture and you'll get a report of comparable structure and severity (with run-to-run variance in exact wording and ~30% in cost).
+All three are markdown reports produced by `/crucible:run` against the corresponding test fixtures under [`tests/fixtures/`](tests/fixtures/), where the fixtures contain deliberate gaps for the personas to find. Run Crucible on any fixture and you'll get a report of comparable structure and severity (with run-to-run variance in exact wording and ~30% in cost).
 
 ---
 
@@ -279,25 +279,25 @@ Crucible uses **per-persona model tiering** to keep cost reasonable while preser
 | Stage 3 | Opus 4.7 | Strategic judgment, ADR-quality reasoning, aim alignment |
 | Aggregator | Opus 4.7 | Holistic synthesis of 7–11 reports + aims |
 
-**Measured run cost (v0.1.0, across bundled `tests/fixtures/{nextjs-auth, go-api}` — 5–7 files each, 10-persona cast):**
+**Measured run cost (v0.1.0, across all three bundled fixtures — 5–7 files each):**
 
 | | Per run |
 |---|---|
-| API cost | **$5–7** (median ~$5.40 across 4 runs) |
-| Wall time | **23–35 min** |
+| API cost | **$5–7** (median ~$5.22 across 5 runs) |
+| Wall time | **20–35 min** |
 | Max-plan quota | **~10–15% per run** |
 
-Four measured runs: three on the 7-file Next.js fixture ($5.16, $6.75, $5.22) and one on the 5-file Go fixture ($5.60). Cost is more sensitive to model output verbosity than to project type:
+Five measured runs: three on the 7-file Next.js fixture ($5.16, $6.75, $5.22), one on the 5-file Go fixture ($5.60), and one on the 6-file PyTorch fixture ($4.78). Cost is more sensitive to model output verbosity and to project complexity than to project language:
 
-- **Within-fixture variance is the dominant noise source.** One of the three Next.js runs wrote a ~30% chattier report — same cast, same scope, ~$1.50 over the others.
-- **Cross-project variance is small for similar-sized fixtures.** The Go run ($5.60) sits inside the Next.js range; both fixtures yielded a 10-persona cast and 2–2.5/10 blocked verdicts.
-- **Cast size scales with project complexity, not project type.** Both fixtures cast 10 personas; the Go run swapped `peer-go-reviewer` + `team-network-reviewer` + `team-observability-reviewer` in place of `peer-typescript-reviewer` + `peer-sql-reviewer` + `team-privacy-compliance-reviewer`. Composition shifted; count did not.
+- **Within-fixture verbosity variance is the dominant noise source.** One of the three Next.js runs wrote a ~30% chattier report — same cast, same scope, ~$1.50 over the others.
+- **Cross-project variance is small for similar-sized fixtures.** All five runs fall in $4.78–$6.75. The ML run is the cheapest because the Profiler cast 8 personas rather than the 10 cast on nextjs and go-api — Frontend, Database, Network, and Privacy reviewers were correctly skipped for an ML pipeline.
+- **Cast size and composition both depend on project type.** The ML pipeline got an 8-persona cast (`peer-python` + `peer-quality`; `team-security` + `team-data-ml` + `team-performance` + `team-observability`; plus 2 leadership). The Next.js and Go runs each got 10-persona casts; the Go cast swapped `peer-go-reviewer` + `team-network-reviewer` + `team-observability-reviewer` in for `peer-typescript-reviewer` + `peer-sql-reviewer` + `team-privacy-compliance-reviewer`. Composition shifts substantially per project type.
 
 **Larger projects will cost more.** The orchestrator pastes file contents into each Stage 1/2 persona's prompt; cache reads amortize most of the bytes across personas, but every new file adds to the cache footprint. Projects with more files, more languages, or stricter aims will pull a wider cast and bigger payloads.
 
-**Per-model split** (typical run): Sonnet 4.6 dominates at ~$3.50–$4.60 (Profiler + 8 reviewers, Stage 1+2); Opus 4.7 contributes ~$1.50–$2.00 (Stage 3 leadership + Aggregator synthesis); Haiku 4.5 is ~$0.10–$0.15 (orchestrator bookkeeping).
+**Per-model split** (typical run): Sonnet 4.6 dominates at ~$2.85–$4.65 (Profiler + reviewers, Stage 1+2); Opus 4.7 contributes ~$1.45–$2.00 (Stage 3 leadership + Aggregator synthesis); Haiku 4.5 is ~$0.10–$0.15 (orchestrator bookkeeping).
 
-Crucible runs comfortably on **Claude Max** (~4–6 full-project reviews before hitting the quota refresh window) and on **Claude Pro** with one caveat: Pro caps Opus access, so heavy users should scope reviews tighter — a phase review casts ~5 personas vs. ~10 for a full-project review, with proportional cost reduction. Larger-project cost data (PyTorch fixture, real-world codebases beyond 5–7 files) lands in v0.1.1.
+Crucible runs comfortably on **Claude Max** (~4–6 full-project reviews before hitting the quota refresh window) and on **Claude Pro** with one caveat: Pro caps Opus access, so heavy users should scope reviews tighter — a phase review casts ~5 personas vs. ~8–10 for a full-project review, with proportional cost reduction. Larger-project cost data (real-world codebases beyond 5–7 files) lands in v0.1.1.
 
 ---
 

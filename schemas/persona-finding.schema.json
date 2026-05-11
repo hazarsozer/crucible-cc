@@ -40,7 +40,7 @@
           "enum": ["critical", "high", "medium", "low"]
         },
         "category": { "type": "string", "minLength": 1 },
-        "title": { "type": "string", "minLength": 1, "maxLength": 160 },
+        "title": { "type": "string", "minLength": 1, "maxLength": 250 },
         "location": { "type": "string", "minLength": 1 },
         "explanation": { "type": "string", "minLength": 1 },
         "suggestion": { "type": "string", "minLength": 1 }
