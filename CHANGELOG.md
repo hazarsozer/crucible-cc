@@ -31,5 +31,5 @@ First public release.
 ### Notes
 
 - Configuration via `.review/config.yaml` is parsed but not yet honored; full override behavior ships in v0.2.0.
-- Runs on Claude Pro and Max plans; Opus is available on both tiers (Pro has usage limits — scope reviews tighter for heavy use).
+- Runs on Claude Pro and Max plans. **Measured cost on the 7-file `tests/fixtures/nextjs-auth` (10-persona cast): $5–7 API per run, 25–35 min wall time, ~10–15% Max-plan quota burn.** Opus is available on both tiers; Pro caps Opus access, so heavy users should scope reviews tighter (a phase review casts ~5 personas vs. ~10 for a full-project review). Cross-project cost data (Go API, PyTorch, larger codebases) lands in v0.1.1. See the README §Costs section for the per-model split and caveats.
 - Quality-review polish backlog (per-persona nits surfaced during authoring) is tracked for v0.2.0.

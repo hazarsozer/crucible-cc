@@ -71,7 +71,7 @@ Crucible runs **5 stages and 4–8 specialized agents** per review. It is not an
 
 For those, **call a specific persona directly** via the Task tool — `crucible:peer-python-reviewer`, `crucible:team-security-reviewer`, `crucible:lead-senior-architect`, etc. The full list of 23 personas is below; each is independently invokable. The pipeline is the heavyweight; individual personas are the scalpel.
 
-This guidance is qualitative for v0.1.0. Concrete cost numbers and a recommended-scope threshold (e.g. "≥N files") will land in v0.1.1 once we have measured runs.
+Measured cost and wall-time ranges (from runs on a 7-file Next.js fixture) are in the [Costs](#costs) section below. A recommended-scope threshold (e.g. "≥N files") will land in v0.1.1 once we have measured runs on larger projects and other project types.
 
 ---
 
@@ -234,7 +234,7 @@ Key notes:
   📋 lead-project-manager: "Phase aim achieved; one security gap blocks 'production-ready'."
 
 📁 Full report: .review/reports/2026-05-10-1430-auth-refactor.md
-   Wall-clock: 5m 12s · Estimated cost: $0.74
+   Wall-clock: 25m 04s · API cost: $5.22
 ```
 
 The saved markdown report is fully detailed — every persona's full findings, scoring, reasoning, and stage-handoff notes are preserved, plus the aims snapshot, casting roster, and run metadata. See [`examples/nextjs-auth-refactor.md`](examples/nextjs-auth-refactor.md) for a complete demo.
@@ -263,7 +263,21 @@ Crucible uses **per-persona model tiering** to keep cost reasonable while preser
 | Stage 3 | Opus 4.7 | Strategic judgment, ADR-quality reasoning, aim alignment |
 | Aggregator | Opus 4.7 | Holistic synthesis of 7–11 reports + aims |
 
-**Typical run cost:** ~$0.75–$1.00 at API rates. Crucible runs comfortably on Claude Pro and Max plans — Pro has Opus access with usage limits, so heavy users may want to space out runs or scope reviews tighter (a phase review casts ~5 personas vs. ~9 for a full-project review).
+**Measured run cost (v0.1.0, on the bundled `tests/fixtures/nextjs-auth` — 7 files, 10-persona cast):**
+
+| | Per run |
+|---|---|
+| API cost | **$5–7** (median ~$5.20) |
+| Wall time | **25–35 min** |
+| Max-plan quota | **~10–15% per run** |
+
+Figures are from 3 measured runs of the same small fixture. Within-fixture variance is real: one of three runs wrote a ~30% chattier report (Sonnet/Opus both more verbose on the same input) and cost ~$1.50 more — same cast, same scope. Structural variance from cast size and project scope is not yet measured.
+
+**Larger projects will cost more.** The orchestrator pastes file contents into each Stage 1/2 persona's prompt; cache reads amortize most of the bytes across personas, but every new file adds to the cache footprint. Project type also shifts the cast (a Go API skips SQL/TS peers; an ML project pulls in `team-data-ml-reviewer`).
+
+**Per-model split** (typical run): Sonnet 4.6 dominates at ~$3.50–$4.60 (Profiler + 8 reviewers, Stage 1+2); Opus 4.7 contributes ~$1.50–$2.00 (Stage 3 leadership + Aggregator synthesis); Haiku 4.5 is ~$0.10–$0.15 (orchestrator bookkeeping).
+
+Crucible runs comfortably on **Claude Max** (~4–6 full-project reviews before hitting the quota refresh window) and on **Claude Pro** with one caveat: Pro caps Opus access, so heavy users should scope reviews tighter — a phase review casts ~5 personas vs. ~10 for a full-project review, with proportional cost reduction. Cross-project cost data (Go API, PyTorch, larger codebases) will land in v0.1.1.
 
 ---
 
