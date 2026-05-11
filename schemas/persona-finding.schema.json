@@ -15,9 +15,10 @@
     "started_at": { "type": "string", "format": "date-time" },
     "completed_at": { "type": "string", "format": "date-time" },
     "scope_assessed": {
-      "type": "array",
-      "items": { "type": "string" },
-      "minItems": 0
+      "anyOf": [
+        { "type": "array", "items": { "type": "string" }, "minItems": 0 },
+        { "type": "string", "enum": ["all"] }
+      ]
     },
     "verdict": { "type": "string", "enum": ["approve", "concerns", "block"] },
     "score": { "type": "integer", "minimum": 0, "maximum": 10 },
