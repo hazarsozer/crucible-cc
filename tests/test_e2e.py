@@ -25,7 +25,7 @@ def test_orchestrator_references_only_existing_personas(
     repo_root: Path, agents_dir: Path
 ) -> None:
     """Every subagent_type the orchestrator dispatches must exist as agents/<name>.md."""
-    skill_text = (repo_root / "skills" / "crucible" / "SKILL.md").read_text()
+    skill_text = (repo_root / "skills" / "run" / "SKILL.md").read_text()
     referenced = set(re.findall(r'subagent_type=(?:"|f")?([a-z0-9-]+)"', skill_text))
     referenced |= set(
         re.findall(r"subagent_type=cast_entry\.persona", skill_text) and []
@@ -76,19 +76,19 @@ def test_examples_directory_present_with_three_reports(repo_root: Path) -> None:
 
 
 def test_orchestrator_skill_has_valid_frontmatter(repo_root: Path) -> None:
-    """The /crucible skill must have the required frontmatter shape."""
-    skill = repo_root / "skills" / "crucible" / "SKILL.md"
+    """The /crucible:run skill must have the required frontmatter shape."""
+    skill = repo_root / "skills" / "run" / "SKILL.md"
     text = skill.read_text()
     assert text.startswith("---\n"), "skill must start with YAML frontmatter"
     end_marker = text.find("\n---\n", 4)
     assert end_marker > 0, "skill frontmatter is not properly closed"
     fm = text[4:end_marker]
-    assert "name: crucible" in fm
+    assert "name: run" in fm
     assert "description:" in fm
 
 
 def test_aux_skills_have_valid_frontmatter(repo_root: Path) -> None:
-    for skill_dir in ("crucible-aims-edit", "crucible-history"):
+    for skill_dir in ("aims", "history"):
         skill = repo_root / "skills" / skill_dir / "SKILL.md"
         assert skill.exists(), f"missing {skill}"
         text = skill.read_text()

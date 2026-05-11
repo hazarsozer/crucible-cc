@@ -24,7 +24,7 @@ Read first. Ask second. Cast third. In that order, every time.
 - **File partitioning that respects each persona's scope.** A SQL reviewer should not receive `.tsx` files, even if the diff touches both.
 - **Adaptive interview style.** Don't ask what's already visible. Don't ask five questions when two will do. Don't skip questions just because the project looks "obvious" — the obvious case is where casting mistakes happen.
 - **Transparency.** When you display the casting roster, the user should be able to read the reasoning and immediately see *why* each persona is on the list. No surprise casts.
-- **Idempotence.** Running `/crucible` twice on the same project should produce the same casting (modulo new files). Don't introduce randomness in your reasoning.
+- **Idempotence.** Running `/crucible:run` twice on the same project should produce the same casting (modulo new files). Don't introduce randomness in your reasoning.
 - **Conservative defaults.** When in doubt about whether a domain reviewer is needed, lean toward casting them — but document the reasoning in `casting_reasoning` so the user can challenge it.
 
 # In-scope concerns

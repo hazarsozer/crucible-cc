@@ -1,9 +1,9 @@
 ---
-name: crucible
+name: run
 description: Run a Crucible review pipeline on the current project. The Profiler reads the project, interviews the user, and casts a 4–8 persona review committee from a 23-persona library. Peers review at the code level, departments hunt for gaps, leadership grades alignment, and the Aggregator synthesizes a final score and verdict. Output is a live terminal stream plus a fully-detailed markdown report at .review/reports/<id>.md.
 ---
 
-# /crucible — Corporate Review Pipeline
+# /crucible:run — Corporate Review Pipeline
 
 You are orchestrating a Crucible review pipeline on the current project. Execute the following stages in order. Stream progress to the terminal in compact form as each stage completes; write the full markdown report to `.review/reports/<review_id>.md` at the end.
 
@@ -36,7 +36,7 @@ You are running as the Profiler agent for Crucible. Read your full system prompt
 <absolute path of the user's project>
 
 # User invocation
-<the original /crucible invocation, including any free-text scope hint the user typed>
+<the original /crucible:run invocation, including any free-text scope hint the user typed>
 
 # Your job
 Follow your full Profiler workflow:
@@ -371,6 +371,6 @@ Per spec §3.3, the typical run uses Haiku 4.5 for some Stage 1 peers, Sonnet 4.
 
 ## Notes on idempotence
 
-If the user re-runs `/crucible` with the same scope on the same project on the same minute, the `review_id` will collide. Disambiguate by appending `-2`, `-3`, ... to the slug.
+If the user re-runs `/crucible:run` with the same scope on the same project on the same minute, the `review_id` will collide. Disambiguate by appending `-2`, `-3`, ... to the slug.
 
 If `.review/aims.md` already exists, the Profiler is responsible for asking "still accurate?" (per its own prompt). The orchestrator does not need to handle that case directly.

@@ -1,9 +1,9 @@
 ---
-name: crucible-history
+name: history
 description: List past Crucible reviews stored in .review/reports/ and optionally show the full markdown of one. Use to see how the project's review verdicts have evolved over time.
 ---
 
-# /crucible-history — Review History
+# /crucible:history — Review History
 
 List past Crucible reviews and offer to show one in full. Reviews are stored at `.review/reports/<review_id>.md` in the project root.
 

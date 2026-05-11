@@ -32,17 +32,17 @@ Then, in any project directory:
 
 ```bash
 cd your-project
-/crucible
+/crucible:run
 ```
 
 Optional commands:
 
 ```bash
-/crucible-aims      # refresh .review/aims.md without running a full review
-/crucible-history   # list past reviews stored in .review/reports/
+/crucible:aims      # refresh .review/aims.md without running a full review
+/crucible:history   # list past reviews stored in .review/reports/
 ```
 
-The first run of `/crucible` will:
+The first run of `/crucible:run` will:
 
 1. Read your project files (file tree, README, language manifests, recent commits).
 2. Detect project type (web-app, api, ml-pipeline, cli, library, mobile, data-pipeline, mixed).
@@ -56,15 +56,15 @@ Subsequent runs reuse `.review/aims.md` (with a "still accurate?" prompt).
 
 ---
 
-## ⚠️ When NOT to use `/crucible`
+## ⚠️ When NOT to use `/crucible:run`
 
 Crucible runs **5 stages and 4–8 specialized agents** per review. It is not another lightweight reviewer — it is a corporate-review simulation, and that shape costs tokens.
 
-**Use `/crucible` for:**
+**Use `/crucible:run` for:**
 - Full-project reviews (initial audit, pre-release, milestone gate)
 - Partial-implementation reviews (a feature, a phase, a refactor in flight)
 
-**Don't use `/crucible` for:**
+**Don't use `/crucible:run` for:**
 - A single script or one-file change
 - Trivial PRs or one-line tweaks
 - Anything where one specialist's perspective is enough
@@ -78,7 +78,7 @@ This guidance is qualitative for v0.1.0. Concrete cost numbers and a recommended
 ## What it does — the 5-stage pipeline
 
 ```
-                User: /crucible from project dir
+                User: /crucible:run from project dir
                             │
                             ▼
  STAGE 0  ┌──────────────────────────────────────┐
@@ -247,7 +247,7 @@ The saved markdown report is fully detailed — every persona's full findings, s
 - [`examples/ml-training-loop.md`](examples/ml-training-loop.md) — PyTorch training pipeline review
 - [`examples/go-api-service.md`](examples/go-api-service.md) — Go HTTP service review
 
-Each is a representative output of `/crucible` on the corresponding test fixture under [`tests/fixtures/`](tests/fixtures/), where the fixtures contain deliberate gaps for the personas to find.
+Each is a representative output of `/crucible:run` on the corresponding test fixture under [`tests/fixtures/`](tests/fixtures/), where the fixtures contain deliberate gaps for the personas to find.
 
 ---
 
@@ -292,7 +292,7 @@ Override behavior is deferred to v0.2.0; v0.1.0 reads the file but does not yet 
 
 ### v0.1.0 (current)
 - Full 23-persona library
-- `/crucible`, `/crucible-aims`, `/crucible-history`
+- `/crucible:run`, `/crucible:aims`, `/crucible:history`
 - Three demo example reports
 - Schema + structural validation tests
 

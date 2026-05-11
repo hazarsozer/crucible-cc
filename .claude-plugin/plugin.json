@@ -9,5 +9,6 @@
   "license": "MIT",
   "homepage": "https://github.com/hazarsozer/crucible-cc",
   "repository": "https://github.com/hazarsozer/crucible-cc",
-  "keywords": ["code-review", "claude-code", "plugin", "review", "pipeline"]
+  "keywords": ["code-review", "claude-code", "plugin", "review", "pipeline"],
+  "skills": ["./skills/"]
 }

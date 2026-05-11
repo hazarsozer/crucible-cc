@@ -1,13 +1,13 @@
 ---
-name: crucible-aims
+name: aims
 description: Refresh the project's .review/aims.md interactively without running a full Crucible review. Use when the project's stated goals have shifted between reviews and you want to update aims before the next /crucible run.
 ---
 
-# /crucible-aims — Refresh Project Aims
+# /crucible:aims — Refresh Project Aims
 
 Force the Profiler agent to re-interview the user about project aims and rewrite `.review/aims.md`. Useful when the project's goals have shifted between reviews — for example, after a pivot, a new milestone, or a change in stakeholder priorities.
 
-This skill does NOT run a full review. It only refreshes the aims file. To run a review against the refreshed aims, invoke `/crucible` afterward.
+This skill does NOT run a full review. It only refreshes the aims file. To run a review against the refreshed aims, invoke `/crucible:run` afterward.
 
 ## Steps
 
