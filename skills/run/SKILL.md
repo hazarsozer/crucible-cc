@@ -16,26 +16,34 @@ Before doing anything else — before running `pwd`, before reading files — pr
 ```
 🔥 Crucible — Corporate Review Pipeline
 
-⚠️  Cost note: Crucible runs in your Claude Code main thread, so YOUR session
-    model drives most of the cost. Measured ranges (5–7 file fixtures):
+⚠️  Usage note: Crucible runs in your Claude Code main thread, so YOUR session
+    model drives most of the cost. If you're on a Claude Pro or Max subscription
+    you don't pay per run — your subscription covers usage; you just consume
+    more or less of your quota. The dollar figures below are API-equivalent
+    token costs (what pay-as-you-go would charge), shown as a reference for
+    relative effort. The percentages are share of a Claude Max 5-hour quota
+    window; Pro subscribers will see proportionally more of their smaller
+    window consumed by the same workload.
 
-      • Haiku 4.5   — ~$3-4 per run, ~6-7% Max quota
+    Measured ranges (5–7 file fixtures):
+
+      • Haiku 4.5   — API ~$3-4 per run, ~6-7% of a Claude Max quota window
                       (cheapest; report template adherence is looser — section
                        names may improvise and detail may collapse; single run
                        consumes ~75% of Haiku's 200K context window, so start a
                        fresh session if you've been using Claude Code already)
 
-      • Sonnet 4.6  — ~$4.50-7 per run, ~10-15% Max quota
+      • Sonnet 4.6  — API ~$4.50-7 per run, ~10-15% of a Claude Max window
                       (recommended balance of cost + polished report)
 
-      • Opus 4.7    — ~$8-10 per run, ~15%+ Max quota
+      • Opus 4.7    — API ~$8-10 per run, ~15%+ of a Claude Max window
                       (deepest main-thread reasoning, but most reasoning happens
                        in dispatched Opus subagents anyway — Sonnet usually fine)
 
     Larger projects cost more in proportion to file count and cast size.
 
     Crucible cannot detect your session model from inside a Skill. If you
-    want to control cost, run `/model claude-haiku-4-5-20251001` or
+    want to manage quota usage, run `/model claude-haiku-4-5-20251001` or
     `/model claude-sonnet-4-6` in this session BEFORE proceeding.
 
 Proceed? (y / n)

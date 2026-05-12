@@ -295,13 +295,13 @@ Crucible uses **per-persona model tiering** to keep cost reasonable while preser
 
 **Measured run cost (v0.1.0, across all three bundled fixtures — 5–7 files each):**
 
-| Session model | Cost per run | Max quota | Notes |
+> **What these numbers mean.** If you're on a **Claude Pro or Max subscription**, you do not pay per run — your subscription covers usage and you just consume more or less of your quota. The dollar column shows the **API-equivalent token cost** (what an equivalent pay-as-you-go API call would cost) as a reference for relative effort. The percentage column shows the share of a **Claude Max** 5-hour quota window a single run consumes; Pro subscribers see the same workload consume a proportionally larger share of their smaller budget. Wall time **10–35 min** · larger projects scale up proportionally to file count and cast size.
+
+| Session model | API-equivalent cost per run | Claude Max quota share | Notes |
 |---|---|---|---|
 | **Haiku 4.5** | **~$3–4** (1 measured run at $3.26 on pytorch-trainer) | **~6–7%** | Cheapest. Report template adherence is looser — section names may improvise, per-persona detail may collapse to one-liners, the Run Metadata block may be skipped. Pipeline integrity is good (real subagent dispatches, real findings — see "Architectural finding" below). Heads-up: a single Crucible run consumes **~75% of Haiku's 200K context window**, so start a fresh Claude Code session before running Crucible if you've been using it heavily already. |
-| **Sonnet 4.6** (recommended) | **~$4.50–7** (6 measured runs, median $5.22, range $4.78–$6.75) | **~10–15%** | Balanced. Detailed per-persona findings sections with full file:line citations. Template adherence is usually canonical but not always — one of the six measured runs improvised (table-style stage blocks, condensed headings, the `## Stage 0 — Profiler` section skipped). The deterministic Python renderer in v0.1.1 will fix this. The default recommendation regardless. |
+| **Sonnet 4.6** (recommended) | **~$4.50–7** (6 measured runs, median $5.22, range $4.78–$6.75) | **~10–15%** | Balanced. Detailed per-persona findings sections with full file:line citations. Template adherence is usually canonical but not always — one of the six measured runs improvised (table-style stage blocks, condensed headings, the `## Stage 0 — Profiler` section skipped). The deterministic Python renderer in v0.1.1 fixes this. The default recommendation regardless. |
 | **Opus 4.7** | **~$8–10** (1 measured run at $8.95 on the cheapest fixture; ~1.7× Sonnet) | **~15%+** | Most expensive. Doesn't add much value at the orchestrator layer — the deep reasoning the pipeline needs already happens in dispatched Opus subagents (Stage 3 leadership + Aggregator), regardless of your main-thread model. Pay Opus rates only if you have a specific reason. |
-
-Wall time **10–35 min** · Larger projects scale up proportionally to file count and cast size.
 
 ### Architectural finding: orchestrator model dominates cost
 
@@ -340,7 +340,12 @@ The subagent shares are roughly constant across orchestrator models; the orchest
 
 ### Plan compatibility
 
-Crucible runs comfortably on **Claude Max** (~5–10 full-project reviews per 5-hour quota window depending on session model) and on **Claude Pro** with one caveat: Pro caps Opus access. The Stage 3 leadership + Aggregator work that requires Opus (~$1.50–$2 of every run) still hits the Pro Opus cap. Heavy Pro users should scope reviews tighter — a phase review casts ~5 personas vs. ~8–10 for a full-project review, with proportional cost reduction.
+Crucible runs on both **Claude Pro** and **Claude Max**. Both plans support every model the pipeline uses (Haiku 4.5, Sonnet 4.6, Opus 4.7) — there's no per-model gating to worry about. The difference is total budget per 5-hour quota window:
+
+- **Claude Max**: comfortable headroom — roughly 5–10 full-project Sonnet-main reviews per window before quota pressure shows. Plenty of margin for iterative reviewing.
+- **Claude Pro**: same pipeline, same models, but the smaller per-window budget runs out faster. A single full-project Sonnet-main review can consume a large fraction of a Pro window. If you hit the limit, you'll be throttled until the window rolls; no Opus-specific cap kicks in separately.
+
+**Practical tip for Pro users**: scope reviews tighter to fit more into each window — a phase review casts ~5 personas vs. ~8–10 for a full-project review, with roughly proportional quota reduction. Or run during a fresh window when quota headroom is maximum.
 
 ### Future cost work (v0.2.0+)
 
