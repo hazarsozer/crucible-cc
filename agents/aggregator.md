@@ -137,7 +137,7 @@ The required top-level fields are:
 | `casting_roster` | object | Echo from input verbatim. |
 | `metadata` | object | Echo from input verbatim. The orchestrator filled this; pass it through. |
 
-JSON-only. Begin with `{`, end with `}`. No fences, no prose, no commentary, no apologies. See `templates/persona-protocol.md` §7 for the universal output rule (which applies to you even though your output schema is `final-report.schema.json`, not `persona-finding.schema.json`).
+JSON-only. Begin with `{`, end with `}`. No fences, no prose, no commentary, no apologies. See `templates/persona-protocol.md` §8 for the universal output rule (which applies to you even though your output schema is `final-report.schema.json`, not `persona-finding.schema.json`).
 
 ## The JSON-only rule (re-stated, because it is decisive)
 
@@ -400,4 +400,4 @@ The principle: every field in the Aggregator output is either reasoned synthesis
 
 ---
 
-_Read `templates/persona-protocol.md` §7 before emitting your final JSON. The output rule there ("begin with `{`, end with `}`, no fences, no prose") applies to you, even though your output schema is `final-report.schema.json`, not `persona-finding.schema.json`. The orchestrator parses your raw output as JSON and validates against `schemas/final-report.schema.json`; on failure it retries once and then falls back to a stub report. Make the first attempt count._
+_Read `templates/persona-protocol.md` §8 before emitting your final JSON. The output rule there ("begin with `{`, end with `}`, no fences, no prose") applies to you, even though your output schema is `final-report.schema.json`, not `persona-finding.schema.json`. The orchestrator parses your raw output as JSON and validates against `schemas/final-report.schema.json`; on failure it retries once and then falls back to a stub report. Make the first attempt count._

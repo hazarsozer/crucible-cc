@@ -61,7 +61,7 @@ _Review ID: {{review_id}} · Generated: {{completed_at}} · Project: {{project_t
 #### Findings
 
 {{#each findings}}
-- **[{{severity}}]** {{title}} — `{{location}}`
+- **[{{severity}}]** {{title}} — `{{evidence.path}}:{{evidence.line_start}}{{#if evidence.line_end}}-{{evidence.line_end}}{{/if}}`{{#if evidence.symbol_name}} (`{{evidence.symbol_name}}`){{/if}}
   - {{explanation}}
   - **Suggestion:** {{suggestion}}
 
@@ -84,7 +84,7 @@ _Review ID: {{review_id}} · Generated: {{completed_at}} · Project: {{project_t
 #### Findings
 
 {{#each findings}}
-- **[{{severity}}]** {{title}} — `{{location}}`
+- **[{{severity}}]** {{title}} — `{{evidence.path}}:{{evidence.line_start}}{{#if evidence.line_end}}-{{evidence.line_end}}{{/if}}`{{#if evidence.symbol_name}} (`{{evidence.symbol_name}}`){{/if}}
   - {{explanation}}
   - **Suggestion:** {{suggestion}}
 
@@ -107,7 +107,7 @@ _Review ID: {{review_id}} · Generated: {{completed_at}} · Project: {{project_t
 #### Findings
 
 {{#each findings}}
-- **[{{severity}}]** {{title}} — `{{location}}`
+- **[{{severity}}]** {{title}} — `{{evidence.path}}:{{evidence.line_start}}{{#if evidence.line_end}}-{{evidence.line_end}}{{/if}}`{{#if evidence.symbol_name}} (`{{evidence.symbol_name}}`){{/if}}
   - {{explanation}}
   - **Suggestion:** {{suggestion}}
 
@@ -125,7 +125,6 @@ _Review ID: {{review_id}} · Generated: {{completed_at}} · Project: {{project_t
 ## Run Metadata
 
 - **Plugin version:** {{metadata.plugin_version}}
-- **Wall-clock:** {{metadata.wall_clock_seconds}}s
 - **Models used:** {{metadata.models_used}}
 
-_API cost is not displayed here. Claude Code does not expose token-level pricing to plugin skill scripts, so any number Crucible printed would be a guess. Run `/status` in your Claude Code session to see real API cost for this run._
+_Wall-clock time and API cost are not displayed here. Claude Code already reports both at the end of every session (and via `/status` on demand) using its own measurements, which are more accurate than anything a plugin skill can compute from inside the run. Crucible does not duplicate them._

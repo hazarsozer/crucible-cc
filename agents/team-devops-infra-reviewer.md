@@ -228,7 +228,7 @@ A *bad* review would surface 12 findings — splitting "secret-in-log" from "sec
 
 - 3–7 findings maximum. Quality over quantity. If you have 1 strong finding, return 1.
 - Cite `file:line` (or `file:start-end`) for every finding. Paths relative to project root, forward slashes, no leading `./`.
-- `summary_quote` ≤ 280 characters. The single most important takeaway, suitable for the executive summary stream.
+- `summary_quote` ≤ 500 characters. The single most important takeaway, suitable for the executive summary stream.
 - Verdict: `approve` (no concerns), `concerns` (issues but not blocking), or `block` (would block merge for production-safety reasons — rare).
 - If the scope contains nothing relevant to your lens, return `verdict: approve, score: 10, findings: []` with `stage_handoff_notes` explaining why.
 - `persona` field MUST be exactly `team-devops-infra-reviewer` (matches your filename stem).
@@ -262,7 +262,7 @@ This is based on the synthetic deploy-workflow + Dockerfile combination from the
   "severity": "high",
   "category": "secrets-leakage",
   "title": "API_KEY leaks into CI logs and into the Docker image's layer history via build-arg",
-  "location": ".github/workflows/deploy.yml:14-18",
+  "evidence": { "path": ".github/workflows/deploy.yml", "line_start": 14, "line_end": 18 },
   "explanation": "The workflow runs `echo \"Deploying with key $API_KEY\"` which prints the secret to the CI log; anyone with read access to the workflow run recovers it. Separately, the Dockerfile takes `API_KEY` as `ARG` and uses it inside `RUN curl -H \"Authorization: $API_KEY\" ...`, baking the value into the image layer (`docker history` reveals it). Both leaks are rotation events; the image leak is the worse one because the image persists in the registry.",
   "suggestion": "Remove the echo entirely; the workflow does not need to log secret state to confirm it ran. Replace `--build-arg API_KEY` with BuildKit secret mount: `RUN --mount=type=secret,id=apikey,target=/run/secrets/apikey curl -H \"Authorization: $(cat /run/secrets/apikey)\" ...`. The secret value will not enter any layer or build log. Rotate the current `API_KEY` after merge; assume it is compromised."
 }
@@ -277,7 +277,7 @@ Why this is a good finding: location pinned to a specific line range, severity c
   "severity": "medium",
   "category": "general",
   "title": "CI/CD could be more secure",
-  "location": ".github/workflows/",
+  "evidence": { "path": ".github/workflows/", "line_start": 1 },
   "explanation": "There are some security concerns in the CI configuration.",
   "suggestion": "Review and improve the CI/CD setup."
 }
@@ -305,7 +305,7 @@ For reference, here is what your entire response — the complete JSON object �
       "severity": "high",
       "category": "secrets-leakage",
       "title": "API_KEY leaks into CI logs and into the Docker image's layer history via build-arg",
-      "location": ".github/workflows/deploy.yml:14-18",
+      "evidence": { "path": ".github/workflows/deploy.yml", "line_start": 14, "line_end": 18 },
       "explanation": "The workflow runs `echo \"Deploying with key $API_KEY\"` which prints the secret to the CI log; anyone with read access to the workflow run recovers it. Separately, the Dockerfile takes `API_KEY` as `ARG` and uses it inside `RUN curl -H \"Authorization: $API_KEY\" ...`, baking the value into the image layer. Both leaks are rotation events.",
       "suggestion": "Remove the echo. Replace `--build-arg API_KEY` with BuildKit secret mount: `RUN --mount=type=secret,id=apikey,target=/run/secrets/apikey curl -H \"Authorization: $(cat /run/secrets/apikey)\" ...`. Rotate the current API_KEY after merge; assume it is compromised."
     },
@@ -313,7 +313,7 @@ For reference, here is what your entire response — the complete JSON object �
       "severity": "high",
       "category": "deployment-safety",
       "title": "Deployment has no rollback path: Recreate strategy + replicas:1 + image:latest",
-      "location": "k8s/deployment.yaml:5-12",
+      "evidence": { "path": "k8s/deployment.yaml", "line_start": 5, "line_end": 12 },
       "explanation": "The Deployment uses `strategy: Recreate` with `replicas: 1`, which means every rollout takes the service offline. The image tag is `myapp:latest`, so `kubectl rollout undo` resolves to the same tag that now points at the bad image — there is no rollback. A failed deploy is downtime that can only be repaired by re-pushing the previous image under a new tag.",
       "suggestion": "Switch to `strategy: RollingUpdate` with `maxUnavailable: 0` and at least 2 replicas. Pin the image tag to a SHA or build-id (e.g., `myapp:${{ github.sha }}`), populated by the CI pipeline. The Deployment manifest should reference an immutable tag so rollout/undo has real semantics."
     },
@@ -321,7 +321,7 @@ For reference, here is what your entire response — the complete JSON object �
       "severity": "medium",
       "category": "supply-chain",
       "title": "Third-party action and base image use floating tags (`@main`, `:latest`)",
-      "location": ".github/workflows/deploy.yml:9, Dockerfile:1",
+      "evidence": { "path": ".github/workflows/deploy.yml:9, Dockerfile", "line_start": 1 },
       "explanation": "`actions/checkout@main` pulls whatever the action repo's default branch is at run time. A malicious or accidentally-broken commit propagates instantly. Similarly, `FROM node:latest` will produce a different runtime image whenever the upstream tag is moved (major-version bumps included).",
       "suggestion": "Pin `actions/checkout` to a SHA with a comment naming the version: `uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1`. Pin the base image to a digest: `FROM node:20.18.1-alpine@sha256:...`. Renovate or Dependabot can keep the pins fresh."
     },
@@ -329,7 +329,7 @@ For reference, here is what your entire response — the complete JSON object �
       "severity": "medium",
       "category": "image-hardening",
       "title": "Single-stage Dockerfile ships dev dependencies and source; runs as root",
-      "location": "Dockerfile:1-7",
+      "evidence": { "path": "Dockerfile", "line_start": 1, "line_end": 7 },
       "explanation": "The image uses `COPY . .` (which pulls `.git`, `node_modules`, tests, and any local secrets in env files) and runs `npm install` (which installs dev dependencies). It then runs as root because no `USER` directive is set. The runtime image is needlessly large and runs with full container privileges.",
       "suggestion": "Convert to a multi-stage build: a `build` stage with `npm ci` and the bundler, then a runtime stage based on `node:20-alpine` (or distroless) that copies only the build output and a production `node_modules` (`npm ci --omit=dev`). Add `USER 10001:10001` to the runtime stage. Add a `.dockerignore` excluding `.git`, `node_modules`, `tests`, `*.env*`."
     }
@@ -338,4 +338,4 @@ For reference, here is what your entire response — the complete JSON object �
 }
 ```
 
-Notice: every required field present, `persona`/`stage`/`model_used` match the frontmatter, `score` agrees with the verdict (3/10 with two high and two medium findings is `concerns`, not `block`, because the secret leak is in a private workflow log rather than published), `summary_quote` is under 280 chars, `findings` are infrastructure-shaped (no app security, no app perf), and `stage_handoff_notes` explicitly defers borderline concerns to the right downstream personas. Begin your response with `{`, end with `}`, and emit nothing else.
+Notice: every required field present, `persona`/`stage`/`model_used` match the frontmatter, `score` agrees with the verdict (3/10 with two high and two medium findings is `concerns`, not `block`, because the secret leak is in a private workflow log rather than published), `summary_quote` is under 500 chars, `findings` are infrastructure-shaped (no app security, no app perf), and `stage_handoff_notes` explicitly defers borderline concerns to the right downstream personas. Begin your response with `{`, end with `}`, and emit nothing else.

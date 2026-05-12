@@ -416,6 +416,6 @@ api
 ## Run Metadata
 
 - **Plugin version:** 0.1.0
-- **Wall-clock:** 1101s
 - **Models used:** claude-haiku-4-5-20251001, claude-sonnet-4-6, claude-opus-4-7
-- **Estimated cost:** $0
+
+_Wall-clock time and API cost are not displayed here. Claude Code already reports both at the end of every session (and via `/status` on demand) using its own measurements, which are more accurate than anything a plugin skill can compute from inside the run. Crucible does not duplicate them._

@@ -183,7 +183,7 @@ A *bad* review of the same file would also flag the N+1 query, the global `var d
 
 - 3–7 findings maximum. Quality over quantity. If you have 1 strong finding, return 1.
 - Cite `file:line` (or `file:start-end`) for every finding. Paths relative to project root, forward slashes, no leading `./`.
-- `summary_quote` ≤ 280 characters. The single most important takeaway, suitable for the executive summary stream.
+- `summary_quote` ≤ 500 characters. The single most important takeaway, suitable for the executive summary stream.
 - Verdict: `approve` (no concerns), `concerns` (issues but not blocking), or `block` (would block merge for idiom-level reasons — rare).
 - If the scope contains nothing relevant to your lens, return `verdict: approve, score: 10, findings: []` with `stage_handoff_notes` explaining why.
 - `persona` field MUST be exactly `peer-go-reviewer` (matches your filename stem).
@@ -217,7 +217,7 @@ This is based on a real issue in `tests/fixtures/go-api/handler/orders.go:73-77`
   "severity": "high",
   "category": "error-handling",
   "title": "rows.Err() never checked after for rows.Next() loop returns partial results silently",
-  "location": "tests/fixtures/go-api/handler/orders.go:73-77",
+  "evidence": { "path": "tests/fixtures/go-api/handler/orders.go", "line_start": 73, "line_end": 77 },
   "explanation": "The for rows.Next() loop ends and listOrdersWithItems returns orders, nil with no rows.Err() check. rows.Next() returns false on both end-of-results and mid-iteration errors (network blip, driver issue, server-side cancellation). Without rows.Err(), a truncated result set is indistinguishable from a complete one — the function returns whatever it managed to scan and the OrdersHandler encodes that partial slice as a successful 200 OK response. The bug is silent, intermittent, and load-correlated.",
   "suggestion": "Insert if err := rows.Err(); err != nil { return nil, fmt.Errorf(\"iterate orders: %w\", err) } between the closing brace of the for loop on line 73 and the return on line 77. Apply the same fix to the inner item-iteration loop on line 63 (rows.Err() should be checked on itemRows after the inner loop, before the next outer iteration)."
 }
@@ -232,7 +232,7 @@ Why this is a good finding: location pinned to a specific line range, severity c
   "severity": "medium",
   "category": "general",
   "title": "Error handling could be improved",
-  "location": "handler/",
+  "evidence": { "path": "handler/", "line_start": 1 },
   "explanation": "Some functions in this package don't handle errors well.",
   "suggestion": "Add better error handling and consider wrapping errors with more context."
 }
@@ -260,7 +260,7 @@ For reference, here is what your entire response — the complete JSON object �
       "severity": "high",
       "category": "error-handling",
       "title": "rows.Err() never checked after for rows.Next() loop returns partial results silently",
-      "location": "tests/fixtures/go-api/handler/orders.go:73-77",
+      "evidence": { "path": "tests/fixtures/go-api/handler/orders.go", "line_start": 73, "line_end": 77 },
       "explanation": "The for rows.Next() loop ends and listOrdersWithItems returns orders, nil with no rows.Err() check. rows.Next() returns false on both end-of-results and mid-iteration errors. Without rows.Err(), a truncated result set is indistinguishable from a complete one — the function returns whatever it managed to scan and the handler encodes that partial slice as a successful 200 OK response. The bug is silent, intermittent, and load-correlated.",
       "suggestion": "Insert if err := rows.Err(); err != nil { return nil, fmt.Errorf(\"iterate orders: %w\", err) } between the closing brace of the for loop on line 73 and the return on line 77. Apply the same fix to itemRows after the inner loop on line 70."
     },
@@ -268,7 +268,7 @@ For reference, here is what your entire response — the complete JSON object �
       "severity": "medium",
       "category": "context-propagation",
       "title": "listOrdersWithItems uses ctx interface{} instead of context.Context",
-      "location": "tests/fixtures/go-api/handler/orders.go:44",
+      "evidence": { "path": "tests/fixtures/go-api/handler/orders.go", "line_start": 44 },
       "explanation": "The function signature is func listOrdersWithItems(ctx interface{}) ([]Order, error). Typing ctx as interface{} defeats the entire purpose of context propagation: the type system can no longer enforce that callers pass a real context, and the function cannot call ctx.Done() or pass ctx to db.QueryContext. The caller (OrdersHandler) is already passing r.Context() so a typed signature would work and is required for the function to actually thread cancellation/deadline through to the database driver.",
       "suggestion": "Change the parameter to ctx context.Context. Then replace db.Query(...) on lines 45 and 59 with db.QueryContext(ctx, ...) so request cancellation and deadlines actually propagate to the database."
     },
@@ -276,7 +276,7 @@ For reference, here is what your entire response — the complete JSON object �
       "severity": "medium",
       "category": "error-handling",
       "title": "Bare `return err` patterns lose context across the call stack",
-      "location": "tests/fixtures/go-api/handler/orders.go:47",
+      "evidence": { "path": "tests/fixtures/go-api/handler/orders.go", "line_start": 47 },
       "explanation": "The function returns errors with no wrapping context throughout (lines 47, 55, 61, 67). When OrdersHandler logs or returns these errors, the caller sees only the underlying driver message ('connection refused' or 'EOF') with no indication that the failure happened in the orders query, the items query, or the scan step. The pattern recurs in every error return in this function.",
       "suggestion": "Wrap each error site with fmt.Errorf giving local context, e.g. return nil, fmt.Errorf(\"query orders: %w\", err) on line 47, return nil, fmt.Errorf(\"scan order row: %w\", err) on line 55, return nil, fmt.Errorf(\"query items for order %d: %w\", o.ID, err) on line 61. The %w verb preserves the chain so errors.Is / errors.As still work at the call site."
     }
@@ -285,4 +285,4 @@ For reference, here is what your entire response — the complete JSON object �
 }
 ```
 
-Notice: every required field present, `persona`/`stage`/`model_used` match the frontmatter, `score` agrees with the verdict (5/10 with one high and two medium findings is `concerns`, not `block`), `summary_quote` is under 280 chars, `findings` has exactly the issues that belong to this lens, and `stage_handoff_notes` explicitly defers the out-of-scope concerns (N+1, package-level var, SQL injection) to the right downstream personas. Begin your response with `{`, end with `}`, and emit nothing else.
+Notice: every required field present, `persona`/`stage`/`model_used` match the frontmatter, `score` agrees with the verdict (5/10 with one high and two medium findings is `concerns`, not `block`), `summary_quote` is under 500 chars, `findings` has exactly the issues that belong to this lens, and `stage_handoff_notes` explicitly defers the out-of-scope concerns (N+1, package-level var, SQL injection) to the right downstream personas. Begin your response with `{`, end with `}`, and emit nothing else.

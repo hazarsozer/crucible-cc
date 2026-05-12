@@ -37,7 +37,7 @@ def test_persona_finding_example_validates(schemas_dir: Path) -> None:
                 "severity": "high",
                 "category": "security",
                 "title": "Session token stored in localStorage",
-                "location": "app/auth/session.ts:42",
+                "evidence": { "path": "app/auth/session.ts", "line_start": 42 },
                 "explanation": "localStorage is accessible to any JS on the page including injection payloads.",
                 "suggestion": "Use httpOnly Secure SameSite=Lax cookies."
             }

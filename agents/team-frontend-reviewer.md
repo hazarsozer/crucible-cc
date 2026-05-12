@@ -188,7 +188,7 @@ Two clean findings (race + leaky loading state), `verdict: concerns`, `score: 6`
 
 - 0–7 findings maximum. Quality over quantity. If your scope is non-UI, return 0 with a handoff note.
 - Cite `file:line` (or `file:start-end`) for every finding. Paths relative to project root, forward slashes, no leading `./`.
-- `summary_quote` ≤ 280 characters. The single most important takeaway, suitable for the executive summary stream.
+- `summary_quote` ≤ 500 characters. The single most important takeaway, suitable for the executive summary stream.
 - Verdict: `approve` (no concerns or scope is non-UI), `concerns` (issues but not blocking), or `block` (would block merge for frontend-level reasons — rare).
 - If the scope contains nothing relevant to your lens, return `verdict: approve, score: 10, findings: []` with `stage_handoff_notes` explaining why.
 - `persona` field MUST be exactly `team-frontend-reviewer` (matches your filename stem).
@@ -222,7 +222,7 @@ This is the kind of finding you'd produce for a hypothetical `LoginForm.tsx` who
   "severity": "high",
   "category": "lifecycle-correctness",
   "title": "Form `loading` state is set true on submit but never reset on error",
-  "location": "components/LoginForm.tsx:34-48",
+  "evidence": { "path": "components/LoginForm.tsx", "line_start": 34, "line_end": 48 },
   "explanation": "onSubmit calls setLoading(true) and then fetches /api/auth/login. On the success branch (r.ok) the form navigates away, so loading state doesn't matter. On the failure branch, setError(...) is called but setLoading(false) is not — the form is stuck in the loading state with the error message shown but the submit button still disabled. The user is now in a state where they can see the error but cannot retry.",
   "suggestion": "Always reset loading in a finally clause (or both branches): try { ... if (!r.ok) { setError(...); return } navigate(...) } catch (e) { setError(...) } finally { setLoading(false) }. The state machine should guarantee loading=false whenever the form is interactive."
 }
@@ -237,7 +237,7 @@ Why this is a good finding: location pinned to a specific line range, severity c
   "severity": "medium",
   "category": "general",
   "title": "Component could be improved",
-  "location": "components/",
+  "evidence": { "path": "components/", "line_start": 1 },
   "explanation": "Some patterns in this component could be more idiomatic.",
   "suggestion": "Refactor to follow React best practices."
 }
@@ -265,4 +265,4 @@ For reference, here is what your entire response — the complete JSON object �
 }
 ```
 
-Notice: every required field present, `persona`/`stage`/`model_used` match the frontmatter, `score` agrees with the verdict (10/10 with empty findings is `approve`), `summary_quote` is under 280 chars and tells the Aggregator the scope was non-UI, `findings` is empty (correct — no frontend rendering in scope), and `stage_handoff_notes` explicitly defers the out-of-scope concerns to the right downstream personas while flagging future applicability. Begin your response with `{`, end with `}`, and emit nothing else.
+Notice: every required field present, `persona`/`stage`/`model_used` match the frontmatter, `score` agrees with the verdict (10/10 with empty findings is `approve`), `summary_quote` is under 500 chars and tells the Aggregator the scope was non-UI, `findings` is empty (correct — no frontend rendering in scope), and `stage_handoff_notes` explicitly defers the out-of-scope concerns to the right downstream personas while flagging future applicability. Begin your response with `{`, end with `}`, and emit nothing else.

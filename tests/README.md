@@ -18,7 +18,7 @@ These cover:
 
 Runs in well under a second on a typical laptop. CI runs this layer on every push.
 
-## Live E2E test (real API calls, ~$1-2 per run)
+## Live E2E test (real API calls, ~$5–7 per run on Claude Max)
 
 ```bash
 RUN_LIVE_E2E=1 uv run pytest tests/test_e2e.py::test_crucible_runs_on_nextjs_fixture
@@ -28,8 +28,8 @@ Requires:
 - `claude` CLI on PATH
 - This plugin installed locally (`claude --plugin-dir <repo-root>` or marketplace install)
 - `ANTHROPIC_API_KEY` exported
-- ~5–10 minutes per fixture
-- ~$1–2 per fixture in API tokens
+- ~20–35 minutes per fixture (full 5-stage pipeline)
+- ~$5–7 per fixture in API tokens (median $5.22 across the 5 measured v0.1.0 runs; range $4.78–$6.75)
 
 The live test asserts only structural invariants (sections present in the
 generated report); content is stochastic. Run before any release tag.

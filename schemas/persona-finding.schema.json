@@ -32,7 +32,7 @@
   "$defs": {
     "Finding": {
       "type": "object",
-      "required": ["severity", "category", "title", "location", "explanation", "suggestion"],
+      "required": ["severity", "category", "title", "evidence", "explanation", "suggestion"],
       "additionalProperties": false,
       "properties": {
         "severity": {
@@ -41,9 +41,37 @@
         },
         "category": { "type": "string", "minLength": 1 },
         "title": { "type": "string", "minLength": 1, "maxLength": 250 },
-        "location": { "type": "string", "minLength": 1 },
+        "evidence": { "$ref": "#/$defs/Evidence" },
         "explanation": { "type": "string", "minLength": 1 },
         "suggestion": { "type": "string", "minLength": 1 }
+      }
+    },
+    "Evidence": {
+      "type": "object",
+      "description": "Structured citation: path + line range. Personas reference source rather than inlining code into the JSON. The Aggregator reads the cited source at render time. This shape eliminates two failure modes: (a) fabricated code in findings, and (b) JSON content tripping security-pattern PreToolUse hooks. Whole-file findings: set line_start=1 and omit line_end.",
+      "required": ["path", "line_start"],
+      "additionalProperties": false,
+      "properties": {
+        "path": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Project-root-relative path. Forward slashes. No leading slash, no ./ prefix."
+        },
+        "line_start": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "First line of the cited region (1-indexed)."
+        },
+        "line_end": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Last line of the cited region (inclusive). Omit for single-line findings."
+        },
+        "symbol_name": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Optional. Name of the function/class/variable the finding concerns. Use prose form without parens (e.g. 'handleRequest', not 'handleRequest(...)')."
+        }
       }
     }
   }

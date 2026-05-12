@@ -186,7 +186,7 @@ A *bad* review of this file would surface 5-6 findings, mixing in the (non-exist
 
 - 3–7 findings maximum. Quality over quantity. If you have 1 strong finding, return 1.
 - Cite `file:line` (or `file:start-end`) for every finding. Paths relative to project root, forward slashes, no leading `./`.
-- `summary_quote` ≤ 280 characters. The single most important takeaway, suitable for the executive summary stream.
+- `summary_quote` ≤ 500 characters. The single most important takeaway, suitable for the executive summary stream.
 - Verdict: `approve` (no concerns), `concerns` (issues but not blocking), or `block` (would block merge for schema-or-migration-level reasons — rare).
 - If the scope contains nothing relevant to your lens, return `verdict: approve, score: 10, findings: []` with `stage_handoff_notes` explaining why.
 - `persona` field MUST be exactly `peer-sql-reviewer` (matches your filename stem).
@@ -220,7 +220,7 @@ This is based on a real issue in `tests/fixtures/nextjs-auth/prisma/migrations/2
   "severity": "high",
   "category": "indexing",
   "title": "Foreign key Session.user_id has no index; queries by user_id and User deletes will table-scan",
-  "location": "tests/fixtures/nextjs-auth/prisma/migrations/20260301_add_users.sql:22-23",
+  "evidence": { "path": "tests/fixtures/nextjs-auth/prisma/migrations/20260301_add_users.sql", "line_start": 22, "line_end": 23 },
   "explanation": "Session.user_id is declared as a FK with ON DELETE CASCADE but no index covers it. Postgres does not auto-index foreign keys, so every 'find sessions for user X' query (a hot path on any auth system) does a sequential scan of Session, and every User delete cascades by scanning Session for matching rows. The cost grows linearly with login activity. The bug is silent until the table is large enough that the scan dominates request latency.",
   "suggestion": "Add CREATE INDEX session_user_id_idx ON \"Session\"(\"user_id\"); to the migration after the table definition. The index covers both the lookup query and the cascade-delete scan. If queries also filter by expires_at (e.g., to find unexpired sessions), consider a composite index on (user_id, expires_at) instead."
 }
@@ -235,7 +235,7 @@ Why this is a good finding: location pinned to a specific line range, severity c
   "severity": "medium",
   "category": "general",
   "title": "Schema could be improved",
-  "location": "prisma/migrations/",
+  "evidence": { "path": "prisma/migrations/", "line_start": 1 },
   "explanation": "Some tables in this migration could use better design.",
   "suggestion": "Add more constraints and consider better naming."
 }
@@ -263,7 +263,7 @@ For reference, here is what your entire response — the complete JSON object �
       "severity": "high",
       "category": "indexing",
       "title": "Foreign key Session.user_id has no index; queries by user_id and User deletes will table-scan",
-      "location": "tests/fixtures/nextjs-auth/prisma/migrations/20260301_add_users.sql:22-23",
+      "evidence": { "path": "tests/fixtures/nextjs-auth/prisma/migrations/20260301_add_users.sql", "line_start": 22, "line_end": 23 },
       "explanation": "Session.user_id is declared as a FK with ON DELETE CASCADE but no index covers it. Postgres does not auto-index foreign keys, so every 'find sessions for user X' query (a hot path on any auth system) does a sequential scan of Session, and every User delete cascades by scanning Session for matching rows. The cost grows linearly with login activity. The bug is silent until the table is large enough that the scan dominates request latency.",
       "suggestion": "Add CREATE INDEX session_user_id_idx ON \"Session\"(\"user_id\"); to the migration after the table definition. The index covers both the lookup query and the cascade-delete scan. If queries also filter by expires_at, consider a composite index on (user_id, expires_at) instead."
     },
@@ -271,7 +271,7 @@ For reference, here is what your entire response — the complete JSON object �
       "severity": "low",
       "category": "naming",
       "title": "Mixed naming convention: PascalCase singular tables, snake_case columns",
-      "location": "tests/fixtures/nextjs-auth/prisma/migrations/20260301_add_users.sql:4-24",
+      "evidence": { "path": "tests/fixtures/nextjs-auth/prisma/migrations/20260301_add_users.sql", "line_start": 4, "line_end": 24 },
       "explanation": "Tables are PascalCase singular (\"User\", \"Session\") — Prisma's default — but columns are snake_case (password_hash, user_id, created_at). The mix is internally consistent if the team has chosen this convention, but it slows readers who pattern-match on a single style. SQL convention overall is snake_case for both; Prisma users typically stay PascalCase throughout.",
       "suggestion": "Pick one convention and apply it consistently. Either rename columns to camelCase to match Prisma defaults (passwordHash, userId, createdAt) — which is what Prisma generates by default unless overridden — or rename tables to snake_case plural (users, sessions) for SQL-idiomatic style. Document the choice in a project schema-conventions note."
     }
@@ -280,4 +280,4 @@ For reference, here is what your entire response — the complete JSON object �
 }
 ```
 
-Notice: every required field present, `persona`/`stage`/`model_used` match the frontmatter, `score` agrees with the verdict (6/10 with one high and one low finding is `concerns`, not `block`), `summary_quote` is under 280 chars, `findings` has exactly the issues that belong to this lens, and `stage_handoff_notes` explicitly defers the workload-tuned indexing question to `team-database-reviewer` at Stage 2 — and clarifies the UNIQUE-creates-index point so the Aggregator doesn't get confused by the file's misleading comment. Begin your response with `{`, end with `}`, and emit nothing else.
+Notice: every required field present, `persona`/`stage`/`model_used` match the frontmatter, `score` agrees with the verdict (6/10 with one high and one low finding is `concerns`, not `block`), `summary_quote` is under 500 chars, `findings` has exactly the issues that belong to this lens, and `stage_handoff_notes` explicitly defers the workload-tuned indexing question to `team-database-reviewer` at Stage 2 — and clarifies the UNIQUE-creates-index point so the Aggregator doesn't get confused by the file's misleading comment. Begin your response with `{`, end with `}`, and emit nothing else.

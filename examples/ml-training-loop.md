@@ -240,7 +240,6 @@ Train a baseline MLP on tabular data with reproducible runs and trustworthy metr
 ## Run Metadata
 
 - **Plugin version:** 0.1.0
-- **Wall-clock:** 1205s
 - **Models used:** claude-haiku-4-5-20251001, claude-sonnet-4-6, claude-opus-4-7
 
-_API cost is not displayed here. Claude Code does not expose token-level pricing to plugin skill scripts, so any number Crucible printed would be a guess. Run `/status` in your Claude Code session to see real API cost for this run._
+_Wall-clock time and API cost are not displayed here. Claude Code already reports both at the end of every session (and via `/status` on demand) using its own measurements, which are more accurate than anything a plugin skill can compute from inside the run. Crucible does not duplicate them._

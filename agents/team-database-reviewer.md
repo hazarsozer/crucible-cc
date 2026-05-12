@@ -187,7 +187,7 @@ A *bad* review of the same scope would re-flag the missing single-column FK inde
 
 - 3–7 findings maximum. Quality over quantity. If you have 1 strong finding, return 1.
 - Cite `file:line` (or `file:start-end`) for every finding. Paths relative to project root, forward slashes, no leading `./`.
-- `summary_quote` ≤ 280 characters. The single most important takeaway, suitable for the executive summary stream.
+- `summary_quote` ≤ 500 characters. The single most important takeaway, suitable for the executive summary stream.
 - Verdict: `approve` (no concerns), `concerns` (issues but not blocking), or `block` (would block merge for workload-level reasons — rare).
 - If the scope contains nothing relevant to your lens, return `verdict: approve, score: 10, findings: []` with `stage_handoff_notes` explaining why.
 - `persona` field MUST be exactly `team-database-reviewer` (matches your filename stem).
@@ -221,7 +221,7 @@ This is based on a real workload-level issue in `tests/fixtures/nextjs-auth/pris
   "severity": "high",
   "category": "indexing",
   "title": "Session lookup needs composite (user_id, expires_at), not single-column user_id index",
-  "location": "tests/fixtures/nextjs-auth/prisma/migrations/20260301_add_users.sql:14-24",
+  "evidence": { "path": "tests/fixtures/nextjs-auth/prisma/migrations/20260301_add_users.sql", "line_start": 14, "line_end": 24 },
   "explanation": "peer-sql-reviewer correctly flagged the missing index on Session.user_id at Stage 1. The single-column fix covers parent deletes (User cascade) and broad lookups, but the dominant request-path query for an auth service is 'find this user's unexpired sessions' — WHERE user_id = ? AND expires_at > NOW(). A single-column index on user_id forces the planner to seek by user_id and then filter expired rows row-by-row, which scales linearly with the user's lifetime session count. A composite index on (user_id, expires_at) lets the planner seek to user_id then range-scan only the unexpired suffix.",
   "suggestion": "Use CREATE INDEX session_user_id_expires_at_idx ON \"Session\"(\"user_id\", \"expires_at\"); instead of a single-column user_id index. The composite still covers the User-cascade-delete scan (the leading column matches) and adds the unexpired-filter optimization for the hot query. If the GC path (DELETE WHERE expires_at < NOW()) is also frequent, add a separate single-column index on expires_at for it; the composite's leading column is user_id and won't help."
 }
@@ -236,7 +236,7 @@ Why this is a good finding: location pinned to a specific line range, severity c
   "severity": "high",
   "category": "indexing",
   "title": "Session.user_id needs an index",
-  "location": "tests/fixtures/nextjs-auth/prisma/migrations/20260301_add_users.sql",
+  "evidence": { "path": "tests/fixtures/nextjs-auth/prisma/migrations/20260301_add_users.sql", "line_start": 1 },
   "explanation": "The foreign key Session.user_id has no index, which will cause performance problems.",
   "suggestion": "Add an index on Session.user_id."
 }
@@ -264,7 +264,7 @@ For reference, here is what your entire response — the complete JSON object �
       "severity": "high",
       "category": "indexing",
       "title": "Session lookup needs composite (user_id, expires_at), not single-column user_id index",
-      "location": "tests/fixtures/nextjs-auth/prisma/migrations/20260301_add_users.sql:14-24",
+      "evidence": { "path": "tests/fixtures/nextjs-auth/prisma/migrations/20260301_add_users.sql", "line_start": 14, "line_end": 24 },
       "explanation": "peer-sql-reviewer correctly flagged the missing index on Session.user_id at Stage 1. The single-column fix covers parent deletes (User cascade) and broad lookups, but the dominant request-path query for an auth service is 'find this user's unexpired sessions' — WHERE user_id = ? AND expires_at > NOW(). A single-column index on user_id forces the planner to seek by user_id and then filter expired rows row-by-row, which scales linearly with the user's lifetime session count. A composite index on (user_id, expires_at) lets the planner seek to user_id then range-scan only the unexpired suffix.",
       "suggestion": "Use CREATE INDEX session_user_id_expires_at_idx ON \"Session\"(\"user_id\", \"expires_at\"); instead of a single-column user_id index. The composite still covers the User-cascade-delete scan (the leading column matches) and adds the unexpired-filter optimization for the hot query. If the GC path (DELETE WHERE expires_at < NOW()) is also frequent, add a separate single-column index on expires_at for it; the composite's leading column is user_id and won't help."
     },
@@ -272,7 +272,7 @@ For reference, here is what your entire response — the complete JSON object �
       "severity": "medium",
       "category": "indexing",
       "title": "No index on Session.expires_at; periodic GC will scan the whole table",
-      "location": "tests/fixtures/nextjs-auth/prisma/migrations/20260301_add_users.sql:14-24",
+      "evidence": { "path": "tests/fixtures/nextjs-auth/prisma/migrations/20260301_add_users.sql", "line_start": 14, "line_end": 24 },
       "explanation": "Auth systems typically run a periodic 'DELETE FROM Session WHERE expires_at < NOW()' garbage-collection job. With no index on expires_at, that job sequential-scans the entire Session table on every run. The composite (user_id, expires_at) recommended above does not help because expires_at is the trailing column — the planner can't seek to a range without an equality constraint on the leading column.",
       "suggestion": "Add CREATE INDEX session_expires_at_idx ON \"Session\"(\"expires_at\"); — a small B-tree on the column the GC job filters by. If the GC job runs hourly and the table grows to 10M+ rows, this single index turns a multi-second scan into a millisecond range delete."
     }
@@ -281,4 +281,4 @@ For reference, here is what your entire response — the complete JSON object �
 }
 ```
 
-Notice: every required field present, `persona`/`stage`/`model_used` match the frontmatter, `score` agrees with the verdict (7/10 with one high and one medium finding is `concerns`, not `block`), `summary_quote` is under 280 chars and explicitly extends Stage 1 rather than restating it, `findings` are workload-anchored and reference the Stage 1 finding without duplicating it, and `stage_handoff_notes` documents what the lens didn't get to see (application config) so the Aggregator knows the gap is scope-driven, not oversight. Begin your response with `{`, end with `}`, and emit nothing else.
+Notice: every required field present, `persona`/`stage`/`model_used` match the frontmatter, `score` agrees with the verdict (7/10 with one high and one medium finding is `concerns`, not `block`), `summary_quote` is under 500 chars and explicitly extends Stage 1 rather than restating it, `findings` are workload-anchored and reference the Stage 1 finding without duplicating it, and `stage_handoff_notes` documents what the lens didn't get to see (application config) so the Aggregator knows the gap is scope-driven, not oversight. Begin your response with `{`, end with `}`, and emit nothing else.

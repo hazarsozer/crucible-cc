@@ -217,7 +217,7 @@ A *bad* review of the same file would also flag the constructor-body assignment,
 
 - 3–7 findings maximum. Quality over quantity. If you have 1 strong finding, return 1.
 - Cite `file:line` (or `file:start-end`) for every finding. Paths relative to project root, forward slashes, no leading `./`.
-- `summary_quote` ≤ 280 characters. The single most important takeaway, suitable for the executive summary stream.
+- `summary_quote` ≤ 500 characters. The single most important takeaway, suitable for the executive summary stream.
 - Verdict: `approve` (no concerns), `concerns` (issues but not blocking), or `block` (would block merge for idiom-level reasons — rare but real for this lens).
 - If the scope contains nothing relevant to your lens, return `verdict: approve, score: 10, findings: []` with `stage_handoff_notes` explaining why.
 - `persona` field MUST be exactly `peer-c-cpp-reviewer` (matches your filename stem).
@@ -252,7 +252,7 @@ This is based on the kind of issue you'd find in a `.hpp` file that opens with `
   "severity": "high",
   "category": "header-hygiene",
   "title": "using namespace std; at file scope in a public header pollutes every including translation unit",
-  "location": "src/cache/lru_cache.hpp:6",
+  "evidence": { "path": "src/cache/lru_cache.hpp", "line_start": 6 },
   "explanation": "The header declares using namespace std; at file scope, which means every .cpp file that includes this header (directly or transitively) pulls the entire std namespace into its global scope. This causes silent name collisions with user identifiers (e.g., user-defined min/max, count, distance) and makes refactors across the codebase fragile — a new std utility added in a future C++ standard can break any consumer. The pollution is especially insidious because it propagates: any header that includes this one also inherits the using directive.",
   "suggestion": "Remove the using namespace std; on line 6 and qualify each std identifier in the header explicitly: std::unordered_map, std::list, std::string, std::pair. If a particular identifier is used dozens of times and qualifying it is genuinely painful, prefer a tightly-scoped using declaration inside a function body or anonymous namespace inside the .cpp file — never at file scope in the header."
 }
@@ -267,7 +267,7 @@ Why this is a good finding: location pinned to a specific line, severity calibra
   "severity": "medium",
   "category": "general",
   "title": "Memory management could be improved",
-  "location": "src/",
+  "evidence": { "path": "src/", "line_start": 1 },
   "explanation": "Some classes in this directory don't manage memory well.",
   "suggestion": "Use modern C++ memory management practices."
 }
@@ -295,7 +295,7 @@ For reference, here is what your entire response — the complete JSON object �
       "severity": "high",
       "category": "header-hygiene",
       "title": "using namespace std; at file scope in a public header pollutes every including translation unit",
-      "location": "src/cache/lru_cache.hpp:6",
+      "evidence": { "path": "src/cache/lru_cache.hpp", "line_start": 6 },
       "explanation": "The header declares using namespace std; at file scope, which means every .cpp file that includes this header (directly or transitively) pulls the entire std namespace into its global scope. This causes silent name collisions with user identifiers and makes refactors fragile — a new std utility added in a future C++ standard can break any consumer. The pollution propagates: any header that includes this one also inherits the using directive.",
       "suggestion": "Remove the using namespace std; on line 6 and qualify each std identifier in the header explicitly: std::unordered_map, std::list, std::string, std::pair. If a particular identifier is used dozens of times, prefer a tightly-scoped using declaration inside a function body or anonymous namespace in the .cpp file — never at file scope in the header."
     },
@@ -303,7 +303,7 @@ For reference, here is what your entire response — the complete JSON object �
       "severity": "high",
       "category": "rule-of-five",
       "title": "Class owns a raw int* with delete in destructor but no copy/move handling — any copy double-frees",
-      "location": "src/cache/lru_cache.hpp:11-25",
+      "evidence": { "path": "src/cache/lru_cache.hpp", "line_start": 11, "line_end": 25 },
       "explanation": "LRUCache holds an int* data member that is delete-d in the destructor (line 11), but no copy constructor, copy assignment, move constructor, or move assignment is declared. The compiler synthesizes a member-wise copy that copies the raw pointer — so any copy of an LRUCache produces two objects pointing at the same buffer, and when both go out of scope each calls delete data; on the same address. This is a textbook double-free. Worse, since the data field is never initialized in the constructor visible here, the destructor's delete may run on an indeterminate pointer if no put() has yet allocated.",
       "suggestion": "Replace int* data with std::unique_ptr<int[]> data; (or, more idiomatically for a cache backing buffer, std::vector<int> data). The smart-pointer/container path eliminates the destructor entirely (rule of zero) — the compiler-synthesized special members will be correct. If you must keep the raw pointer for an external constraint, declare the rule of five explicitly: copy/move constructor, copy/move assignment, destructor, with the copy operations either deep-copying the buffer or =delete-d to make the type non-copyable."
     },
@@ -311,7 +311,7 @@ For reference, here is what your entire response — the complete JSON object �
       "severity": "medium",
       "category": "const-correctness",
       "title": "string parameters taken by value cause a copy on every call; should be string_view or const string&",
-      "location": "src/cache/lru_cache.hpp:13",
+      "evidence": { "path": "src/cache/lru_cache.hpp", "line_start": 13 },
       "explanation": "get(string key) and put(string key, ...) take std::string by value, which forces a copy of the caller's string on every call (and a heap allocation for any string longer than the SSO threshold). The parameters are used as read-only lookup keys — they should be std::string_view (C++17+) so callers can pass any string-like type without conversion. The pattern recurs on the put() signature and likely on any sibling methods.",
       "suggestion": "Change the signatures to int get(std::string_view key) const noexcept; and void put(std::string_view key, int value); — and add the const qualifier on get() since it logically does not mutate the cache (though splice() touches the order list, which is a rare case where const + mutable members or simply non-const is the right call; if so, leave the const off but address the by-value parameter regardless)."
     },
@@ -319,7 +319,7 @@ For reference, here is what your entire response — the complete JSON object �
       "severity": "medium",
       "category": "fallibility",
       "title": "get() returns -1 as a not-found sentinel; std::optional<int> would make absence visible in the type",
-      "location": "src/cache/lru_cache.hpp:15",
+      "evidence": { "path": "src/cache/lru_cache.hpp", "line_start": 15 },
       "explanation": "get() returns -1 to signal 'key not found'. This collides with any cache that legitimately stores -1, forces every caller to remember the sentinel, and makes the absence case invisible at the call site (the caller has to know to compare against -1). std::optional<int> encodes the same semantics in the type system: callers must explicitly decide what to do with the empty case, and there's no sentinel collision.",
       "suggestion": "Change the return type to std::optional<int> get(std::string_view key) const; and replace return -1; with return std::nullopt;. Callers update from auto v = cache.get(k); if (v == -1) ... to if (auto v = cache.get(k); v) ... — at the cost of a small migration, the type system now enforces handling of the absent case."
     }
@@ -328,4 +328,4 @@ For reference, here is what your entire response — the complete JSON object �
 }
 ```
 
-Notice: every required field present, `persona`/`stage`/`model_used` match the frontmatter, `score` agrees with the verdict (4/10 with two `high` and two `medium` findings is `concerns`, leaning toward `block` if a copy of the type is plausible — adjust based on the rest of the codebase visible to you), `summary_quote` is under 280 chars, `findings` has exactly the issues that belong to this lens, and `stage_handoff_notes` explicitly defers the out-of-scope concerns to the right downstream personas. Begin your response with `{`, end with `}`, and emit nothing else.
+Notice: every required field present, `persona`/`stage`/`model_used` match the frontmatter, `score` agrees with the verdict (4/10 with two `high` and two `medium` findings is `concerns`, leaning toward `block` if a copy of the type is plausible — adjust based on the rest of the codebase visible to you), `summary_quote` is under 500 chars, `findings` has exactly the issues that belong to this lens, and `stage_handoff_notes` explicitly defers the out-of-scope concerns to the right downstream personas. Begin your response with `{`, end with `}`, and emit nothing else.

@@ -9,7 +9,8 @@ several minutes to run). They verify structural integrity:
 
 The live E2E test (test_crucible_runs_on_nextjs_fixture) IS gated by
 RUN_LIVE_E2E=1 and shells out to the `claude` CLI. Use only before
-release. Run cost is ~$1-2 per fixture.
+release. Run cost is ~$5-7 per fixture on Claude Max (median $5.22
+across the 5 measured v0.1.0 runs).
 """
 from __future__ import annotations
 
@@ -129,8 +130,8 @@ def test_crucible_runs_on_nextjs_fixture(fixtures_dir: Path) -> None:
       - `claude` CLI on PATH
       - This plugin installed locally
       - ANTHROPIC_API_KEY in env
-      - ~5 minutes per fixture
-      - ~$1-2 per fixture run
+      - ~20-35 minutes per fixture (full 5-stage pipeline)
+      - ~$5-7 per fixture run on Claude Max (median $5.22 across v0.1.0 runs)
 
     Content is stochastic; this test only checks structural invariants.
     """

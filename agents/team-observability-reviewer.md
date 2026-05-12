@@ -183,7 +183,7 @@ A *bad* review surfaces 8 findings, one per concern in this file, each at `mediu
 
 - 3–7 findings maximum. Quality over quantity.
 - Cite `file:line` (or `file:start-end`) for every finding. Paths relative to project root, forward slashes, no leading `./`. For "missing X" findings, cite the file where X *should* be added.
-- `summary_quote` ≤ 280 characters. Single sharpest takeaway.
+- `summary_quote` ≤ 500 characters. Single sharpest takeaway.
 - Verdict: `approve`, `concerns`, or `block` (rare for this lens unless the service is operationally blind and aims claim production-ready).
 - If the scope isn't a long-running service, return `verdict: approve, score: 10, findings: []` with `stage_handoff_notes`.
 - `persona` MUST be exactly `team-observability-reviewer`.
@@ -215,7 +215,7 @@ Based on `tests/fixtures/go-api/main.go:25-27` and the broader fixture — every
   "severity": "high",
   "category": "structured-logging",
   "title": "Service uses standard log package with bare strings; production logs are unsearchable",
-  "location": "tests/fixtures/go-api/main.go:25-27",
+  "evidence": { "path": "tests/fixtures/go-api/main.go", "line_start": 25, "line_end": 27 },
   "explanation": "The service emits log.Println(\"listening on :8080\") and log.Fatalf(\"server: %v\", err) — bare strings with no level, no service identifier, no fields. Handlers in handler/orders.go and handler/user.go follow the same pattern (no logger imported at all; errors flow through fmt.Sprintf into http.Error). When this service ships to a centralized log aggregator (Loki, ELK, CloudWatch), every line becomes opaque text. On-call cannot query 'errors for user X' or 'all 500s in the last hour'; they grep by timestamp and hope. Worse, when handler errors become http.Error(w, fmt.Sprintf(...)) on line 32 of orders.go, the error message is sent to the client AND lost from the operator's view.",
   "suggestion": "Adopt log/slog (Go 1.21+) at startup: logger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelInfo})); slog.SetDefault(logger). Replace log.Println / log.Fatalf with slog.Info / slog.Error using key-value fields: slog.Info(\"server listening\", \"addr\", \":8080\"). In handlers, log the error with structured fields before http.Error: slog.ErrorContext(r.Context(), \"list orders failed\", \"err\", err)."
 }
@@ -230,7 +230,7 @@ Why this is a good finding: location pinned to the exemplar lines, severity cali
   "severity": "medium",
   "category": "general",
   "title": "Logging could be improved",
-  "location": "main.go",
+  "evidence": { "path": "main.go", "line_start": 1 },
   "explanation": "The service does not have very good logging.",
   "suggestion": "Use a better logging library."
 }
@@ -258,7 +258,7 @@ Here's what your entire response looks like for a review of `tests/fixtures/go-a
       "severity": "high",
       "category": "structured-logging",
       "title": "Service uses standard log package with bare strings; production logs are unsearchable",
-      "location": "tests/fixtures/go-api/main.go:25-27",
+      "evidence": { "path": "tests/fixtures/go-api/main.go", "line_start": 25, "line_end": 27 },
       "explanation": "The service emits log.Println and log.Fatalf with bare strings — no level, no service identifier, no fields. Handlers extend the pattern: errors flow through fmt.Sprintf into http.Error with no structured logger call (orders.go:32, user.go:22). Centralized log aggregators receive opaque text; on-call cannot query 'errors for user X' or 'all 500s last hour'.",
       "suggestion": "Adopt log/slog at startup: logger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelInfo})); slog.SetDefault(logger). Replace bare log calls with slog.Info / slog.Error using key-value fields. In handlers, log the error with structured fields before http.Error: slog.ErrorContext(r.Context(), \"list orders failed\", \"err\", err, \"route\", \"/orders\")."
     },
@@ -266,7 +266,7 @@ Here's what your entire response looks like for a review of `tests/fixtures/go-a
       "severity": "high",
       "category": "operational-endpoints",
       "title": "No /healthz, /readyz, or /metrics endpoints registered",
-      "location": "tests/fixtures/go-api/main.go:19-21",
+      "evidence": { "path": "tests/fixtures/go-api/main.go", "line_start": 19, "line_end": 21 },
       "explanation": "The mux only registers /orders and /user. For a long-running service, this means orchestrators have nothing to probe for liveness/readiness (they'll restart loop or never route traffic) and metrics scrapers have nothing to scrape. RED metrics (rate, errors, duration) per route, plus pool/queue saturation, are invisible — perf regressions and saturation events go undetected.",
       "suggestion": "Register three additional handlers alongside /orders and /user: mux.HandleFunc(\"/healthz\", ...) returning 200 with {status, version, commit}; mux.HandleFunc(\"/readyz\", ...) returning 200 only when DB ping succeeds (cached ~5s); mux.Handle(\"/metrics\", promhttp.Handler()) using prometheus/client_golang. Wrap user-facing handlers with a middleware that increments http_requests_total{route, method, status} and records http_request_duration_seconds."
     },
@@ -274,7 +274,7 @@ Here's what your entire response looks like for a review of `tests/fixtures/go-a
       "severity": "high",
       "category": "error-tracking",
       "title": "No error tracker integration; unhandled errors disappear into stdout and 500 responses",
-      "location": "tests/fixtures/go-api/handler/orders.go:31-33",
+      "evidence": { "path": "tests/fixtures/go-api/handler/orders.go", "line_start": 31, "line_end": 33 },
       "explanation": "Errors from listOrdersWithItems are wrapped by http.Error and sent to the client; nothing forwards them to a tracker. Combined with peer-go-reviewer's flagged unchecked rows.Err() at orders.go:73-77, this means a silent partial-result bug becomes a silent 200 OK in production with no operator-side signal at all. New error types accumulate without grouping, deduplication, or impact estimation.",
       "suggestion": "Initialize an error tracker SDK at startup (Sentry, Honeybadger, Bugsnag, or vendor equivalent) with environment, release, and traces sample rate. Wrap the mux with a middleware that recovers panics and forwards err with request context (route, method, request_id, user if available) to the tracker before responding 500. The same middleware should call slog.ErrorContext so the structured log and the tracker entry share a request_id."
     },
@@ -282,7 +282,7 @@ Here's what your entire response looks like for a review of `tests/fixtures/go-a
       "severity": "medium",
       "category": "request-correlation",
       "title": "No request-ID middleware; logs from a single request can't be reconstructed",
-      "location": "tests/fixtures/go-api/main.go:19",
+      "evidence": { "path": "tests/fixtures/go-api/main.go", "line_start": 19 },
       "explanation": "The mux is constructed and handed to ListenAndServe with no middleware in front. Incoming requests carry no generated or propagated correlation ID; the handlers receive r.Context() but no logger fields are scoped to it. Once the service sits behind a proxy or fans out to a database, on-call cannot stitch the log lines for a single failing request.",
       "suggestion": "Add a middleware that reads X-Request-ID (and W3C traceparent) or generates one (uuid or chi/middleware.RequestID), attaches to ctx, and produces a request-scoped child logger that emits request_id on every line. Apply via mux.Handle wrapping; pass the scoped logger into handlers via context."
     }
@@ -291,4 +291,4 @@ Here's what your entire response looks like for a review of `tests/fixtures/go-a
 }
 ```
 
-Notice: every required field present, `persona`/`stage`/`model_used` match the frontmatter, `score` agrees with the verdict (4/10 with three high and one medium is `concerns` — `block` would be reasonable if aims explicitly declared production-ready), `summary_quote` is under 280 chars and captures the on-call cost, `findings` are the foundational gaps (not every concern checkbox), and `stage_handoff_notes` ties the observability gaps to peer findings and defers downstream concerns to the right personas. Begin your response with `{`, end with `}`, and emit nothing else.
+Notice: every required field present, `persona`/`stage`/`model_used` match the frontmatter, `score` agrees with the verdict (4/10 with three high and one medium is `concerns` — `block` would be reasonable if aims explicitly declared production-ready), `summary_quote` is under 500 chars and captures the on-call cost, `findings` are the foundational gaps (not every concern checkbox), and `stage_handoff_notes` ties the observability gaps to peer findings and defers downstream concerns to the right personas. Begin your response with `{`, end with `}`, and emit nothing else.

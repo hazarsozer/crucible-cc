@@ -181,7 +181,7 @@ A *bad* review of the same scope would also flag the unchecked `rows.Err()`, the
 
 - 3–7 findings maximum. Quality over quantity. If you have 1 strong finding, return 1.
 - Cite `file:line` (or `file:start-end`) for every finding. Paths relative to project root, forward slashes, no leading `./`.
-- `summary_quote` ≤ 280 characters. The single most important takeaway, suitable for the executive summary stream.
+- `summary_quote` ≤ 500 characters. The single most important takeaway, suitable for the executive summary stream.
 - Verdict: `approve` (no concerns), `concerns` (issues but not blocking), or `block` (would block merge for server-logic-level reasons — rare).
 - If the scope contains nothing relevant to your lens, return `verdict: approve, score: 10, findings: []` with `stage_handoff_notes` explaining why.
 - `persona` field MUST be exactly `team-backend-reviewer` (matches your filename stem).
@@ -214,7 +214,7 @@ This is based on a real issue in `tests/fixtures/nextjs-auth/app/auth/route.ts:9
   "severity": "high",
   "category": "request-validation",
   "title": "POST /auth handler does not validate request body before passing to login()",
-  "location": "tests/fixtures/nextjs-auth/app/auth/route.ts:9-13",
+  "evidence": { "path": "tests/fixtures/nextjs-auth/app/auth/route.ts", "line_start": 9, "line_end": 13 },
   "explanation": "const body = await request.json() returns whatever the client sent and flows directly into login(body). The login() function does string-emptiness checks inside validateInput but no schema parse at the boundary, so any malformed payload (extra fields, wrong types, nested objects, prototype pollution attempts) reaches business logic. The right place to validate is the handler — once business logic is reached, the input should be a typed, trusted value.",
   "suggestion": "Define a Zod (or valibot) schema for LoginInput and parse at the top of the handler: const parsed = LoginInputSchema.safeParse(body); if (!parsed.success) return new Response(JSON.stringify({ error: { code: 'invalid_request', message: parsed.error.message } }), { status: 400 }); then pass parsed.data into login(). validateInput inside login() can stay as a defense-in-depth check or be removed."
 }
@@ -229,7 +229,7 @@ Why this is a good finding: location pinned to a specific line range, severity c
   "severity": "medium",
   "category": "general",
   "title": "Backend logic could be improved",
-  "location": "app/auth/",
+  "evidence": { "path": "app/auth/", "line_start": 1 },
   "explanation": "The authentication flow has some issues that should be addressed.",
   "suggestion": "Add validation, error handling, and proper authorization."
 }
@@ -257,7 +257,7 @@ For reference, here is what your entire response — the complete JSON object �
       "severity": "high",
       "category": "request-validation",
       "title": "POST /auth handler does not validate request body before passing to login()",
-      "location": "tests/fixtures/nextjs-auth/app/auth/route.ts:9-13",
+      "evidence": { "path": "tests/fixtures/nextjs-auth/app/auth/route.ts", "line_start": 9, "line_end": 13 },
       "explanation": "const body = await request.json() returns whatever the client sent and flows directly into login(body). validateInput inside login() does string-emptiness checks but no schema parse at the boundary, so any malformed payload (extra fields, wrong types, nested objects) reaches business logic. The right place to validate is the handler — once business logic is reached, the input should be a typed, trusted value.",
       "suggestion": "Define a Zod schema (LoginInputSchema = z.object({ email: z.string().email(), password: z.string().min(8) })) and parse at the top of the handler: const parsed = LoginInputSchema.safeParse(body); if (!parsed.success) return new Response(JSON.stringify({ error: { code: 'invalid_request', message: parsed.error.message } }), { status: 400 }); then pass parsed.data into login()."
     },
@@ -265,7 +265,7 @@ For reference, here is what your entire response — the complete JSON object �
       "severity": "high",
       "category": "authorization",
       "title": "OrdersHandler has no visible authentication or authorization check; returns all orders to any caller",
-      "location": "tests/fixtures/go-api/handler/orders.go:29-36",
+      "evidence": { "path": "tests/fixtures/go-api/handler/orders.go", "line_start": 29, "line_end": 36 },
       "explanation": "OrdersHandler reads no user context from the request and calls listOrdersWithItems(r.Context()) which returns the entire orders table. Any unauthenticated caller (or any authenticated caller regardless of role) gets every user's orders. If this is meant to be a per-user endpoint, ownership filtering is missing; if it is meant to be admin-only, an explicit role check is missing. Either way, the endpoint as written is an authorization gap.",
       "suggestion": "Extract the authenticated user from r.Context() (e.g., user, ok := auth.FromContext(r.Context())) and either filter the query by user.ID for a per-user endpoint or check user.IsAdmin for an admin endpoint. Return http.StatusUnauthorized (401) when no user is in context and http.StatusForbidden (403) when the user lacks the required role."
     },
@@ -273,7 +273,7 @@ For reference, here is what your entire response — the complete JSON object �
       "severity": "medium",
       "category": "pagination",
       "title": "OrdersHandler returns the full orders table with no pagination",
-      "location": "tests/fixtures/go-api/handler/orders.go:30-35",
+      "evidence": { "path": "tests/fixtures/go-api/handler/orders.go", "line_start": 30, "line_end": 35 },
       "explanation": "listOrdersWithItems returns []Order and the handler encodes the full slice as the response. With a large orders table this is a memory and bandwidth bomb — at a million orders the response could be hundreds of MB. Once the authorization gap (above) is fixed and the endpoint is per-user, pagination is still required because heavy users may have thousands of orders.",
       "suggestion": "Accept ?limit= (default 50, max 200) and ?cursor= (opaque, base64 of the last seen order ID + created_at) on the handler. Pass both into listOrdersWithItems and have the query SELECT ... WHERE (created_at, id) < (cursor) ORDER BY created_at DESC, id DESC LIMIT ? for cursor-based pagination. Include { meta: { nextCursor, hasMore } } in the response envelope."
     },
@@ -281,7 +281,7 @@ For reference, here is what your entire response — the complete JSON object �
       "severity": "medium",
       "category": "error-handling",
       "title": "Every handler error path collapses to 500 with no error-code classification",
-      "location": "tests/fixtures/go-api/handler/orders.go:32",
+      "evidence": { "path": "tests/fixtures/go-api/handler/orders.go", "line_start": 32 },
       "explanation": "http.Error(w, fmt.Sprintf(\"listOrders: %v\", err), http.StatusInternalServerError) returns 500 for any failure, with the raw error message in the response body. The same pattern recurs in user.go:22. A typed-error approach would let the handler distinguish 'database temporarily unavailable' (5xx, retryable) from 'caller-supplied an unknown ID' (404) from 'caller is forbidden' (403). The current shape also leaks internal error strings to clients.",
       "suggestion": "Introduce sentinel errors (var ErrNotFound = errors.New(...), var ErrForbidden = errors.New(...)) and a respondError(w, err) helper that maps errors to status codes (errors.Is(err, ErrNotFound) → 404, errors.Is(err, ErrForbidden) → 403, default → 500) and writes a structured envelope ({\"error\": {\"code\": \"...\", \"message\": \"...\"}}). Don't echo the raw err.Error() string to the client."
     },
@@ -289,7 +289,7 @@ For reference, here is what your entire response — the complete JSON object �
       "severity": "medium",
       "category": "response-shape",
       "title": "Auth route success and error envelopes have inconsistent shape",
-      "location": "tests/fixtures/nextjs-auth/app/auth/route.ts:17-24",
+      "evidence": { "path": "tests/fixtures/nextjs-auth/app/auth/route.ts", "line_start": 17, "line_end": 24 },
       "explanation": "The 200 response is JSON.stringify({ userId, token }) and the 401 response is JSON.stringify({ error }). A client SDK has to special-case the success path because the success object is not nested under a data key but the error object is under an error key. As more endpoints land, the inconsistency compounds and clients write per-endpoint parsers.",
       "suggestion": "Pick a single envelope and apply it consistently. For example: success returns { data: { userId, token } }; failure returns { error: { code: 'invalid_credentials', message: 'Invalid email or password' } }. Add a respondJson(status, body) helper to enforce the envelope across handlers."
     }
@@ -298,4 +298,4 @@ For reference, here is what your entire response — the complete JSON object �
 }
 ```
 
-Notice: every required field present, `persona`/`stage`/`model_used` match the frontmatter, `score` agrees with the verdict (4/10 with two highs and three mediums is `concerns` — close to `block`, but the issues are addressable), `summary_quote` is under 280 chars, `findings` has exactly the issues that belong to this lens, and `stage_handoff_notes` explicitly defers the out-of-scope concerns to the right downstream personas while acknowledging the Stage 1 findings without repeating them. Begin your response with `{`, end with `}`, and emit nothing else.
+Notice: every required field present, `persona`/`stage`/`model_used` match the frontmatter, `score` agrees with the verdict (4/10 with two highs and three mediums is `concerns` — close to `block`, but the issues are addressable), `summary_quote` is under 500 chars, `findings` has exactly the issues that belong to this lens, and `stage_handoff_notes` explicitly defers the out-of-scope concerns to the right downstream personas while acknowledging the Stage 1 findings without repeating them. Begin your response with `{`, end with `}`, and emit nothing else.

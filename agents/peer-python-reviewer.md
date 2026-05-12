@@ -184,7 +184,7 @@ A *bad* review of this file from your lens would surface five or six findings, m
 
 - 3–7 findings maximum. Quality over quantity. If you have 1 strong finding, return 1.
 - Cite `file:line` (or `file:start-end`) for every finding. Paths relative to project root, forward slashes, no leading `./`.
-- `summary_quote` ≤ 280 characters. The single most important takeaway, suitable for the executive summary stream.
+- `summary_quote` ≤ 500 characters. The single most important takeaway, suitable for the executive summary stream.
 - Verdict: `approve` (no concerns), `concerns` (issues but not blocking), or `block` (would block merge for idiom-level reasons — rare).
 - If the scope contains nothing relevant to your lens, return `verdict: approve, score: 10, findings: []` with `stage_handoff_notes` explaining why.
 - `persona` field MUST be exactly `peer-python-reviewer` (matches your filename stem).
@@ -218,7 +218,7 @@ This is based on a real issue in `tests/fixtures/pytorch-trainer/src/train.py` �
   "severity": "medium",
   "category": "logging",
   "title": "Use logging instead of print() for training metrics in reusable function",
-  "location": "tests/fixtures/pytorch-trainer/src/train.py:66",
+  "evidence": { "path": "tests/fixtures/pytorch-trainer/src/train.py", "line_start": 66 },
   "explanation": "The training loop emits per-epoch metrics via print(), but train() is a reusable function (not just a CLI entrypoint). print() writes to stdout with no level, no timestamp, no logger name, and no way for callers or tests to silence it. Once this script is imported by a tuning harness or a notebook, the print noise is inescapable.",
   "suggestion": "Add logger = logging.getLogger(__name__) at module top, then replace print(f\"epoch {epoch + 1}/...\") with logger.info(...). The print(\"training complete\") on line 68 should also become logger.info(\"training complete\"). Configure logging at the __main__ entrypoint, not inside train()."
 }
@@ -233,7 +233,7 @@ Why this is a good finding: location pinned to a specific line, severity calibra
   "severity": "medium",
   "category": "general",
   "title": "Code could be more Pythonic",
-  "location": "src/",
+  "evidence": { "path": "src/", "line_start": 1 },
   "explanation": "Some functions in this directory are not following Python best practices.",
   "suggestion": "Refactor to use more idiomatic Python patterns."
 }
@@ -261,7 +261,7 @@ For reference, here is what your entire response — the complete JSON object �
       "severity": "medium",
       "category": "logging",
       "title": "Use logging instead of print() for training metrics in reusable function",
-      "location": "tests/fixtures/pytorch-trainer/src/train.py:66",
+      "evidence": { "path": "tests/fixtures/pytorch-trainer/src/train.py", "line_start": 66 },
       "explanation": "The training loop emits per-epoch metrics via print(), but train() is a reusable function (not just a CLI entrypoint). print() writes to stdout with no level, no timestamp, no logger name, and no way for callers or tests to silence it. Once this script is imported by a tuning harness or a notebook, the print noise is inescapable.",
       "suggestion": "Add logger = logging.getLogger(__name__) at module top, then replace print(f\"epoch {epoch + 1}/...\") with logger.info(...). The print(\"training complete\") on line 68 should also become logger.info(\"training complete\"). Configure logging at the __main__ entrypoint, not inside train()."
     }
@@ -270,4 +270,4 @@ For reference, here is what your entire response — the complete JSON object �
 }
 ```
 
-Notice: every required field present, `persona`/`stage`/`model_used` match the frontmatter, `score` agrees with the verdict (7/10 with one medium finding is `concerns`, not `block`), `summary_quote` is under 280 chars, `findings` has exactly the issues that belong to this lens, and `stage_handoff_notes` explicitly defers the out-of-scope concerns to the right downstream personas. Begin your response with `{`, end with `}`, and emit nothing else.
+Notice: every required field present, `persona`/`stage`/`model_used` match the frontmatter, `score` agrees with the verdict (7/10 with one medium finding is `concerns`, not `block`), `summary_quote` is under 500 chars, `findings` has exactly the issues that belong to this lens, and `stage_handoff_notes` explicitly defers the out-of-scope concerns to the right downstream personas. Begin your response with `{`, end with `}`, and emit nothing else.

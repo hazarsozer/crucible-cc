@@ -189,7 +189,7 @@ A *bad* review of the same scope would surface seven findings — splitting "no 
 
 - 3–7 findings maximum. Quality over quantity. If you have 1 strong finding, return 1.
 - Cite `file:line` (or `file:start-end`) for every finding. Paths relative to project root, forward slashes, no leading `./`.
-- `summary_quote` ≤ 280 characters. The single most important takeaway, suitable for the executive summary stream.
+- `summary_quote` ≤ 500 characters. The single most important takeaway, suitable for the executive summary stream.
 - Verdict: `approve` (no concerns), `concerns` (gaps but not blocking), or `block` (would block merge for critical-path coverage reasons — rare).
 - If the scope contains nothing relevant to your lens, return `verdict: approve, score: 10, findings: []` with `stage_handoff_notes` explaining why.
 - `persona` field MUST be exactly `peer-quality-engineer` (matches your filename stem).
@@ -223,7 +223,7 @@ This is based on a real gap in `tests/fixtures/nextjs-auth/tests/auth.test.ts:36
   "severity": "high",
   "category": "missing-failure-path-coverage",
   "title": "login() has no test for any failure path; five branches go untested",
-  "location": "tests/fixtures/nextjs-auth/tests/auth.test.ts:36-42",
+  "evidence": { "path": "tests/fixtures/nextjs-auth/tests/auth.test.ts", "line_start": 36, "line_end": 42 },
   "explanation": "The only test in this file asserts the happy path (valid credentials → ok: true). The production login() in app/auth/login.ts has five distinct failure exits — missing email, missing password, password too short, user not found, password mismatch — none of which are exercised. Auth is critical-path code; shipping it with success-only coverage means a regression in any failure branch will reach production undetected.",
   "suggestion": "Add at least four failure-path tests against the same mocked Prisma/bcrypt: (1) missing email returns { ok: false, error: 'email required' }; (2) password shorter than 8 chars returns { ok: false, error: 'password too short' }; (3) findUnique mock resolves to null → returns { ok: false, error: 'invalid credentials' }; (4) bcrypt.compare mock resolves to false → returns { ok: false, error: 'invalid credentials' }. Each test mirrors the existing happy-path setup but flips one mock to drive the failure branch."
 }
@@ -238,7 +238,7 @@ Why this is a good finding: location pinned to a specific line range in the test
   "severity": "medium",
   "category": "general",
   "title": "Test coverage could be improved",
-  "location": "tests/",
+  "evidence": { "path": "tests/", "line_start": 1 },
   "explanation": "There aren't enough tests in this project.",
   "suggestion": "Add more tests."
 }
@@ -266,7 +266,7 @@ For reference, here is what your entire response — the complete JSON object �
       "severity": "high",
       "category": "missing-failure-path-coverage",
       "title": "login() has no test for any failure path; five branches go untested",
-      "location": "tests/fixtures/nextjs-auth/tests/auth.test.ts:36-42",
+      "evidence": { "path": "tests/fixtures/nextjs-auth/tests/auth.test.ts", "line_start": 36, "line_end": 42 },
       "explanation": "The only test asserts the happy path. login() in app/auth/login.ts has five failure exits — missing email, missing password, short password, user not found, password mismatch — none exercised. Auth is critical-path code; success-only coverage means a regression in any failure branch reaches production undetected.",
       "suggestion": "Add four failure-path tests against the same mocked Prisma/bcrypt: missing email; password < 8 chars; findUnique resolves null; bcrypt.compare resolves false. Each flips one mock to drive the failure branch and asserts the exact error string."
     },
@@ -274,7 +274,7 @@ For reference, here is what your entire response — the complete JSON object �
       "severity": "medium",
       "category": "weak-assertions",
       "title": "Happy-path test under-asserts: result.token never checked",
-      "location": "tests/fixtures/nextjs-auth/tests/auth.test.ts:38-41",
+      "evidence": { "path": "tests/fixtures/nextjs-auth/tests/auth.test.ts", "line_start": 38, "line_end": 41 },
       "explanation": "The test asserts result.ok === true and result.userId === 'user-1' but never asserts anything about result.token, even though the production contract returns a session token (login.ts:89-93). A regression that drops the token from the response would still pass this test.",
       "suggestion": "Assert the full result shape: expect(result).toEqual({ ok: true, userId: 'user-1', token: 'tok' }). If the token value is non-deterministic, use expect.any(String) or a regex matcher — but assert it exists."
     },
@@ -282,7 +282,7 @@ For reference, here is what your entire response — the complete JSON object �
       "severity": "medium",
       "category": "missing-edge-cases",
       "title": "No edge-case tests for email/password input handling",
-      "location": "tests/fixtures/nextjs-auth/app/auth/login.ts:27-38",
+      "evidence": { "path": "tests/fixtures/nextjs-auth/app/auth/login.ts", "line_start": 27, "line_end": 38 },
       "explanation": "validateInput rejects empty/non-string email and password and short passwords. The test suite covers none of these boundaries: no test for empty string vs undefined vs whitespace-only email, no test for password at the 8-character boundary, no unicode test. Boundary bugs hide here.",
       "suggestion": "Add a parameterized test exercising validateInput's failure cases via the public login() entry: cases for { email: '', password: 'x'.repeat(8) }, { email: 'a@b', password: 'short' }, { email: 'unicode-Ω@example.com', password: 'longenough' } (should pass), etc."
     },
@@ -290,7 +290,7 @@ For reference, here is what your entire response — the complete JSON object �
       "severity": "medium",
       "category": "missing-integration-coverage",
       "title": "No integration test for the route → login → session flow",
-      "location": "tests/fixtures/nextjs-auth/app/auth/route.ts",
+      "evidence": { "path": "tests/fixtures/nextjs-auth/app/auth/route.ts", "line_start": 1 },
       "explanation": "The POST handler in route.ts wires login() into a Response. The test suite only exercises login() directly with mocked Prisma; it never validates that the route returns the expected status codes and response shapes for success and failure. Bugs at the route-handler seam (status code, header shape, response body) slip through every unit test.",
       "suggestion": "Add an integration-style test that drives the route handler: construct a Request, await POST(request), assert the Response status and JSON body for one success case and one failure case. Use the same Prisma/bcrypt mocks; mock at the boundary, not at login()."
     }
@@ -299,4 +299,4 @@ For reference, here is what your entire response — the complete JSON object �
 }
 ```
 
-Notice: every required field present, `persona`/`stage`/`model_used` match the frontmatter, `score` agrees with the verdict (4/10 with one high and three medium findings is `concerns`, not `block`), `summary_quote` is under 280 chars, `findings` has exactly the gaps that belong to this lens (no security, no perf, no architecture), and `stage_handoff_notes` explicitly defers out-of-scope concerns to the right downstream personas. Begin your response with `{`, end with `}`, and emit nothing else.
+Notice: every required field present, `persona`/`stage`/`model_used` match the frontmatter, `score` agrees with the verdict (4/10 with one high and three medium findings is `concerns`, not `block`), `summary_quote` is under 500 chars, `findings` has exactly the gaps that belong to this lens (no security, no perf, no architecture), and `stage_handoff_notes` explicitly defers out-of-scope concerns to the right downstream personas. Begin your response with `{`, end with `}`, and emit nothing else.

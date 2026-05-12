@@ -203,7 +203,7 @@ A *bad* review would surface 12 findings: every individual `aria-` attribute the
 
 - 0–7 findings maximum. Quality over quantity. If you have 1 strong finding, return 1.
 - Cite `file:line` (or `file:start-end`) for every finding. Paths relative to project root, forward slashes, no leading `./`.
-- `summary_quote` ≤ 280 characters. The single most important takeaway, suitable for the executive summary stream.
+- `summary_quote` ≤ 500 characters. The single most important takeaway, suitable for the executive summary stream.
 - Verdict: `approve` (no concerns), `concerns` (issues but not blocking), or `block` (would block merge for accessibility-level reasons — rare, reserved for primary-flow barriers).
 - If the scope contains nothing relevant to your lens, return `verdict: approve, score: 10, findings: []` with `stage_handoff_notes` explaining why.
 - `persona` field MUST be exactly `team-accessibility-reviewer` (matches your filename stem).
@@ -237,7 +237,7 @@ This is based on a synthesized JSX example: an avatar-change action rendered as 
   "severity": "high",
   "category": "semantic-html",
   "title": "Clickable <div> for 'Change avatar' is not keyboard-operable and not announced as a button",
-  "location": "app/settings/profile/page.tsx:8-10",
+  "evidence": { "path": "app/settings/profile/page.tsx", "line_start": 8, "line_end": 10 },
   "explanation": "<div onClick={openEditor}> is rendered as a plain DOM element with no role, no tabIndex, and no keyboard handler. A keyboard user cannot focus or activate it; a screen-reader user hears the inner text 'Change avatar' as ordinary content with no indication it is interactive. The light gray text color (#999 on a presumed white background) compounds the issue at ~2.85:1 contrast, well below the 4.5:1 WCAG 2.2 AA minimum.",
   "suggestion": "Replace the <div> with a <button type='button' onClick={openEditor}> and remove the cursor:pointer style (the button gives it for free). Restyle the text color to at least #595959 on white for AA compliance, or keep #999 only for disabled state. The button is now focusable, keyboard-operable (Enter/Space), and announced as 'Change avatar, button' to screen readers."
 }
@@ -252,7 +252,7 @@ Why this is a good finding: location pinned to a specific line range; severity c
   "severity": "medium",
   "category": "general",
   "title": "Accessibility could be improved",
-  "location": "app/settings/",
+  "evidence": { "path": "app/settings/", "line_start": 1 },
   "explanation": "Some elements in this directory could be more accessible.",
   "suggestion": "Add ARIA attributes and consider semantic HTML."
 }
@@ -280,7 +280,7 @@ For reference, here is what your entire response — the complete JSON object �
       "severity": "high",
       "category": "semantic-html",
       "title": "Clickable <div> for 'Change avatar' is not keyboard-operable and not announced as a button",
-      "location": "app/settings/profile/page.tsx:8-10",
+      "evidence": { "path": "app/settings/profile/page.tsx", "line_start": 8, "line_end": 10 },
       "explanation": "<div onClick={openEditor}> has no role, no tabIndex, no keyboard handler. Keyboard users cannot focus or activate it; screen readers announce the text as ordinary content. Compounding this, the #999 text on white reads at ~2.85:1, below the 4.5:1 WCAG AA minimum.",
       "suggestion": "Replace with <button type='button' onClick={openEditor}>Change avatar</button>. Adjust text color to at least #595959 on white for AA compliance. The native <button> handles focus, Enter/Space activation, and screen-reader announcement automatically."
     },
@@ -288,7 +288,7 @@ For reference, here is what your entire response — the complete JSON object �
       "severity": "high",
       "category": "form-labels",
       "title": "Display-name input uses placeholder as label; no programmatic label exists",
-      "location": "app/settings/profile/page.tsx:12",
+      "evidence": { "path": "app/settings/profile/page.tsx", "line_start": 12 },
       "explanation": "<input type='text' placeholder='Display name' /> has no associated <label>. Placeholder text disappears on focus and is announced inconsistently across screen readers. A user on assistive tech who reaches this input hears 'edit text, blank' with no indication of what to type.",
       "suggestion": "Add a label associated by id: <label htmlFor='display-name'>Display name</label> <input id='display-name' type='text' />. If a visible label is undesirable, use a visually-hidden class to keep it offscreen but readable by screen readers — never rely on placeholder alone."
     },
@@ -296,7 +296,7 @@ For reference, here is what your entire response — the complete JSON object �
       "severity": "high",
       "category": "error-messaging",
       "title": "Validation error is a color-only icon with no text and no association to the input",
-      "location": "app/settings/profile/page.tsx:13",
+      "evidence": { "path": "app/settings/profile/page.tsx", "line_start": 13 },
       "explanation": "{error && <span style={{ color: 'red' }}>!</span>} renders a single red character as the error indicator. Screen readers announce '!' (or skip it); the input itself carries no aria-invalid or aria-describedby; users who can't perceive color have no signal that submission failed. The error message text exists in state but is never rendered.",
       "suggestion": "Render: <p id='display-name-error' role='alert'>{error}</p>. On the input add: aria-invalid={!!error} aria-describedby={error ? 'display-name-error' : undefined}. The role='alert' will announce the error assertively, and aria-describedby links it to the input for follow-up navigation."
     },
@@ -304,7 +304,7 @@ For reference, here is what your entire response — the complete JSON object �
       "severity": "high",
       "category": "modal-focus-management",
       "title": "Custom 'modal' div has no focus trap, no escape handler, and no focus restoration",
-      "location": "app/settings/profile/page.tsx:14-17",
+      "evidence": { "path": "app/settings/profile/page.tsx", "line_start": 14, "line_end": 17 },
       "explanation": "<div className='modal' style={{ display: open ? 'block' : 'none' }}> is shown/hidden by toggling display, but focus stays at the trigger element when it opens; tabbing escapes into the page beneath; pressing Escape does nothing; on close, focus has nowhere to return. Screen-reader users can also read content outside the dialog because no aria-hidden is applied to the rest of the page.",
       "suggestion": "Replace the hand-rolled overlay with the native <dialog> element (use dialog.showModal() / dialog.close()) or a vetted library like @radix-ui/react-dialog or @headlessui/react Dialog. These handle focus trap, Escape-to-close, return-focus-to-trigger, and aria-modal correctly. If you must keep a custom impl, add: focus-trap on mount, an Escape keydown handler, focus restoration on close, role='dialog' aria-modal='true' aria-labelledby pointing at the <h3>."
     },
@@ -312,7 +312,7 @@ For reference, here is what your entire response — the complete JSON object �
       "severity": "medium",
       "category": "image-alt",
       "title": "<img> for avatar has no alt attribute",
-      "location": "app/settings/profile/page.tsx:7",
+      "evidence": { "path": "app/settings/profile/page.tsx", "line_start": 7 },
       "explanation": "<img src='/avatar.png' /> has no alt attribute. Screen readers may read the filename or skip the image entirely. If this is the user's profile photo (meaningful), it needs descriptive alt text. If it's purely decorative, it needs alt='' to mark as such — the omission leaves the choice to the screen reader.",
       "suggestion": "If this is the user's avatar (meaningful content), add alt={`${userName}'s profile photo`}. If it's a generic placeholder (decorative), use alt=''. Never omit the attribute — explicit empty alt is the spec for decorative images."
     },
@@ -320,7 +320,7 @@ For reference, here is what your entire response — the complete JSON object �
       "severity": "medium",
       "category": "headings",
       "title": "Heading hierarchy skips from <h2> to <h4>",
-      "location": "app/settings/profile/page.tsx:5-6",
+      "evidence": { "path": "app/settings/profile/page.tsx", "line_start": 5, "line_end": 6 },
       "explanation": "<h2>Profile Settings</h2> is followed immediately by <h4>Avatar</h4>, skipping <h3>. Screen-reader users navigating by heading will perceive a missing intermediate section, breaking the document's outline navigation. Heading levels reflect document structure, not visual size.",
       "suggestion": "Change <h4>Avatar</h4> to <h3>Avatar</h3>. If the visual styling needs to be smaller than a default h3, restyle with CSS — keep the semantic level correct. As a separate consideration, verify a single <h1> exists at the page-or-layout level for top-level navigation."
     }
@@ -329,4 +329,4 @@ For reference, here is what your entire response — the complete JSON object �
 }
 ```
 
-Notice: every required field present, `persona`/`stage`/`model_used` match the frontmatter, `score` agrees with the verdict (4/10 with four high and two medium findings is `concerns`, on the edge of `block` — judgment call given that no single primary user flow is fully blocked), `summary_quote` is under 280 chars, `findings` covers the highest-impact issues for this lens, related concerns are merged where they share a root cause, and `stage_handoff_notes` flags recurrence and defers adjacent concerns to other personas. Begin your response with `{`, end with `}`, and emit nothing else.
+Notice: every required field present, `persona`/`stage`/`model_used` match the frontmatter, `score` agrees with the verdict (4/10 with four high and two medium findings is `concerns`, on the edge of `block` — judgment call given that no single primary user flow is fully blocked), `summary_quote` is under 500 chars, `findings` covers the highest-impact issues for this lens, related concerns are merged where they share a root cause, and `stage_handoff_notes` flags recurrence and defers adjacent concerns to other personas. Begin your response with `{`, end with `}`, and emit nothing else.

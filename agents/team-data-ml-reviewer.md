@@ -182,7 +182,7 @@ A *bad* review of the same scope would re-flag the `print()` idiom (peer's findi
 
 - 0–7 findings maximum. Quality over quantity. If you have 1 strong finding, return 1.
 - Cite `file:line` (or `file:start-end`) for every finding. Paths relative to project root, forward slashes, no leading `./`.
-- `summary_quote` ≤ 280 characters. The single most important takeaway, suitable for the executive summary stream.
+- `summary_quote` ≤ 500 characters. The single most important takeaway, suitable for the executive summary stream.
 - Verdict: `approve` (no concerns), `concerns` (issues but not blocking), or `block` (would block merge for ML-correctness reasons — rare, reserve for cases where stated project goals are falsified by the code).
 - If the scope contains nothing relevant to your lens, return `verdict: approve, score: 10, findings: []` with `stage_handoff_notes` explaining why.
 - `persona` field MUST be exactly `team-data-ml-reviewer` (matches your filename stem).
@@ -216,7 +216,7 @@ This is based on a real ML-correctness gap in `tests/fixtures/pytorch-trainer/sr
   "severity": "high",
   "category": "data-leakage",
   "title": "load_full_dataset returns the entire dataset with no train/val/test split; every reported metric will be leakage by construction",
-  "location": "tests/fixtures/pytorch-trainer/src/data.py:29-36",
+  "evidence": { "path": "tests/fixtures/pytorch-trainer/src/data.py", "line_start": 29, "line_end": 36 },
   "explanation": "The function returns the full TabularDataset and there is no separate train/val/test split anywhere in the pipeline. The training loop in src/train.py:50-66 will fit on this data, and any evaluation against the same dataset would be evaluating the model on data it was trained on — pure leakage, not generalization. The project aims explicitly commit to 'Train / val / test split exists and there is no leakage'; the code falsifies the commitment. Until a split exists, no metric this script produces can be trusted to reflect generalization.",
   "suggestion": "Split the dataset deterministically inside the loader (or a sibling function) and return three datasets. Example: from sklearn.model_selection import train_test_split; X_train, X_temp, y_train, y_temp = train_test_split(self.x, self.y, test_size=0.3, random_state=seed, stratify=self.y); X_val, X_test, y_val, y_test = train_test_split(X_temp, y_temp, test_size=0.5, random_state=seed, stratify=y_temp). Wrap each tuple in a TabularDataset and return train/val/test as three separate Dataset objects. Update train.py to consume train_loader for fitting, val_loader for per-epoch validation, and test_loader for the single end-of-run evaluation."
 }
@@ -231,7 +231,7 @@ Why this is a good finding: location pinned to a specific line range, severity c
   "severity": "medium",
   "category": "data",
   "title": "Dataset handling could be improved",
-  "location": "src/data.py",
+  "evidence": { "path": "src/data.py", "line_start": 1 },
   "explanation": "The dataset module has some issues with how data is handled.",
   "suggestion": "Consider implementing better data practices."
 }
@@ -259,7 +259,7 @@ For reference, here is what your entire response — the complete JSON object �
       "severity": "high",
       "category": "data-leakage",
       "title": "load_full_dataset returns the entire dataset with no train/val/test split; every reported metric will be leakage by construction",
-      "location": "tests/fixtures/pytorch-trainer/src/data.py:29-36",
+      "evidence": { "path": "tests/fixtures/pytorch-trainer/src/data.py", "line_start": 29, "line_end": 36 },
       "explanation": "The function returns the full TabularDataset and there is no separate train/val/test split anywhere in the pipeline. The training loop in src/train.py:50-66 will fit on this data, and any evaluation against the same dataset would be evaluating the model on data it was trained on — pure leakage, not generalization. The project aims explicitly commit to 'Train / val / test split exists and there is no leakage'; the code falsifies the commitment. Until a split exists, no metric this script produces can be trusted to reflect generalization.",
       "suggestion": "Split the dataset deterministically inside the loader (or a sibling function) and return three datasets. Example: from sklearn.model_selection import train_test_split; X_train, X_temp, y_train, y_temp = train_test_split(self.x, self.y, test_size=0.3, random_state=seed, stratify=self.y); X_val, X_test, y_val, y_test = train_test_split(X_temp, y_temp, test_size=0.5, random_state=seed, stratify=y_temp). Wrap each tuple in a TabularDataset and return train/val/test as three separate Dataset objects. Update train.py to consume train_loader for fitting, val_loader for per-epoch validation, and test_loader for the single end-of-run evaluation."
     },
@@ -267,7 +267,7 @@ For reference, here is what your entire response — the complete JSON object �
       "severity": "high",
       "category": "reproducibility",
       "title": "No random seed set anywhere; runs are not reproducible across invocations despite the stated aim",
-      "location": "tests/fixtures/pytorch-trainer/src/train.py:33",
+      "evidence": { "path": "tests/fixtures/pytorch-trainer/src/train.py", "line_start": 33 },
       "explanation": "The training entrypoint sets no seed for python's random, numpy, torch, or cuda. The DataLoader uses shuffle=True (reshuffled per epoch with a fresh ordering each run), the dataset constructor in src/data.py:19-20 calls np.random.randn / np.random.randint without seeding, and nn.Linear weight init in src/model.py:14-22 is unseeded. Two runs of this script with identical config will produce different loss curves and different final metrics. The project aims explicitly commit to 'Training is reproducible — two runs with the same config produce identical loss curves'; the code falsifies the commitment.",
       "suggestion": "Add a set_seed(seed: int) helper at the top of train.py and call it before any data/model construction: import random, numpy as np, torch; def set_seed(seed): random.seed(seed); np.random.seed(seed); torch.manual_seed(seed); torch.cuda.manual_seed_all(seed); torch.backends.cudnn.deterministic = True; torch.use_deterministic_algorithms(True, warn_only=True). Read the seed from cfg (add seed: 42 to default.yaml). For DataLoader determinism, also pass a torch.Generator with a manual seed via the generator= kwarg, and use a worker_init_fn that re-seeds workers."
     },
@@ -275,7 +275,7 @@ For reference, here is what your entire response — the complete JSON object �
       "severity": "medium",
       "category": "training-visibility",
       "title": "Only training loss is logged per epoch; no val loss, no overfitting signal",
-      "location": "tests/fixtures/pytorch-trainer/src/train.py:50-66",
+      "evidence": { "path": "tests/fixtures/pytorch-trainer/src/train.py", "line_start": 50, "line_end": 66 },
       "explanation": "The training loop logs running_loss / len(loader) per epoch but never computes or logs validation loss. With epochs: 20 in the config and a model that may converge sooner, overfitting is invisible — the script will report decreasing training loss even when val loss has been climbing for the last 10 epochs. peer-python-reviewer correctly flagged the print() as a logging idiom issue; the deeper gap from this lens is that there is no per-epoch val-set evaluation to log in the first place. Without val curves, early stopping and checkpoint selection are impossible.",
       "suggestion": "After splitting the dataset (see the data-leakage finding), compute val loss and val accuracy at the end of each epoch using model.eval() + a no-grad pass over val_loader. Log both train and val metrics per epoch. Add early stopping: track best val loss, save the model checkpoint when it improves, break if no improvement for N epochs (patience=5 is a reasonable default for 20-epoch runs)."
     },
@@ -283,7 +283,7 @@ For reference, here is what your entire response — the complete JSON object �
       "severity": "medium",
       "category": "experiment-tracking",
       "title": "No experiment tracking integration; metrics live only in terminal scrollback",
-      "location": "tests/fixtures/pytorch-trainer/src/train.py:33-72",
+      "evidence": { "path": "tests/fixtures/pytorch-trainer/src/train.py", "line_start": 33, "line_end": 72 },
       "explanation": "The training script has no integration with any experiment tracker (MLflow, W&B, ClearML, or even a structured CSV). Metrics are written via print() (peer-python-reviewer's logging-idiom finding) but no machine-readable record persists. Two consequences: (a) future-you cannot answer 'which config produced our best val loss' without rerunning everything, (b) the project aim 'Metrics are logged per epoch' is satisfied only in the loosest sense — the metrics print to a terminal that closes when the script ends. For an iterative project comparing configurations, this is the difference between systematic experimentation and one-shot runs.",
       "suggestion": "Add MLflow integration: import mlflow at module top, wrap train() in with mlflow.start_run():, log the config once via mlflow.log_params(cfg), and log per-epoch metrics via mlflow.log_metrics({'train_loss': train_loss, 'val_loss': val_loss}, step=epoch). Save the best checkpoint via mlflow.log_artifact('best_model.pt'). For a single-machine setup, mlflow's local file backend (mlflow.set_tracking_uri('file:./mlruns')) requires no infrastructure beyond the package install."
     }
@@ -292,4 +292,4 @@ For reference, here is what your entire response — the complete JSON object �
 }
 ```
 
-Notice: every required field present, `persona`/`stage`/`model_used` match the frontmatter, `score` agrees with the verdict (4/10 with two `high` findings on aim-falsification is `concerns` with low score — `block` would also be defensible here, but `concerns` with the urgency in `summary_quote` conveys the same signal without overreaching), `summary_quote` is under 280 chars and explicitly anchors to the stated aims, every finding ties the gap to a consequence the team can act on, and `stage_handoff_notes` cross-references prior findings (peer-python-reviewer's print idiom) and explicitly defers out-of-scope concerns to the right downstream personas. Begin your response with `{`, end with `}`, and emit nothing else.
+Notice: every required field present, `persona`/`stage`/`model_used` match the frontmatter, `score` agrees with the verdict (4/10 with two `high` findings on aim-falsification is `concerns` with low score — `block` would also be defensible here, but `concerns` with the urgency in `summary_quote` conveys the same signal without overreaching), `summary_quote` is under 500 chars and explicitly anchors to the stated aims, every finding ties the gap to a consequence the team can act on, and `stage_handoff_notes` cross-references prior findings (peer-python-reviewer's print idiom) and explicitly defers out-of-scope concerns to the right downstream personas. Begin your response with `{`, end with `}`, and emit nothing else.

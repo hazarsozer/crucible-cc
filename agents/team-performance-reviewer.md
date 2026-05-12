@@ -195,7 +195,7 @@ A *bad* review of the same scope would re-flag the unchecked `rows.Err()` (Stage
 - 3–7 findings maximum. Quality over quantity. If you have 1 strong finding, return 1.
 - Cite `file:line` (or `file:start-end`) for every finding. Paths relative to project root, forward slashes, no leading `./`.
 - **Every finding's `explanation` includes a capacity memo.** A one-line numeric impact estimate. Approximate is fine; vague is not.
-- `summary_quote` ≤ 280 characters. The single most important takeaway, suitable for the executive summary stream.
+- `summary_quote` ≤ 500 characters. The single most important takeaway, suitable for the executive summary stream.
 - Verdict: `approve` (no concerns), `concerns` (issues but not blocking), or `block` (would block merge for capacity-level reasons — rare).
 - If the scope contains nothing relevant to your lens, return `verdict: approve, score: 10, findings: []` with `stage_handoff_notes` explaining why.
 - `persona` field MUST be exactly `team-performance-reviewer` (matches your filename stem).
@@ -229,7 +229,7 @@ Based on the smoke fixture `tests/fixtures/go-api/handler/orders.go:59` — the 
   "severity": "high",
   "category": "n-plus-one-query",
   "title": "listOrdersWithItems issues one query per order for items; N+1 round trips dominate latency",
-  "location": "tests/fixtures/go-api/handler/orders.go:51-72",
+  "evidence": { "path": "tests/fixtures/go-api/handler/orders.go", "line_start": 51, "line_end": 72 },
   "explanation": "Capacity memo: at 100 orders and ~2 ms DB RTT each, the inner db.Query loop adds ~200 ms to p95; at 1k orders, ~2 s. Wall-clock time on this endpoint is dominated by round-trip count, not query work. The outer for rows.Next() iterates orders and the body issues a fresh db.Query for items per order — classic N+1. The fix is mechanical: one JOIN or one IN-clause query collapses N+1 round trips into 2.",
   "suggestion": "Replace the inner per-order query with a single batched query: after collecting orders into a slice, run SELECT id, order_id, name, unit_cost FROM items WHERE order_id = ANY($1) (or IN with a placeholder list), then group items by order_id in a Go map and assign back. Two queries total, regardless of N. Alternative: a single LEFT JOIN orders/items query and group server-side. Pair with a LIMIT on the outer orders query to bound the result set (see related capacity memo on pagination)."
 }
@@ -244,7 +244,7 @@ Why this is a good finding: location pinned to a specific line range, severity c
   "severity": "medium",
   "category": "performance",
   "title": "This endpoint could be slow",
-  "location": "handler/orders.go",
+  "evidence": { "path": "handler/orders.go", "line_start": 1 },
   "explanation": "The orders endpoint may have performance issues at scale.",
   "suggestion": "Consider optimizing the query pattern."
 }
@@ -272,7 +272,7 @@ For reference, here is what your entire response — the complete JSON object �
       "severity": "high",
       "category": "n-plus-one-query",
       "title": "listOrdersWithItems issues one query per order for items; N+1 round trips dominate latency",
-      "location": "tests/fixtures/go-api/handler/orders.go:51-72",
+      "evidence": { "path": "tests/fixtures/go-api/handler/orders.go", "line_start": 51, "line_end": 72 },
       "explanation": "Capacity memo: at 100 orders and ~2 ms DB RTT each, the inner db.Query loop adds ~200 ms to p95; at 1k orders, ~2 s. Wall-clock time on this endpoint is dominated by round-trip count, not query work. The outer for rows.Next() iterates orders and the body issues a fresh db.Query for items per order — classic N+1. The fix is mechanical: one JOIN or one IN-clause query collapses N+1 round trips into 2.",
       "suggestion": "Replace the inner per-order query with a single batched query: after collecting orders into a slice, run SELECT id, order_id, name, unit_cost FROM items WHERE order_id = ANY($1), then group items by order_id in a Go map and assign back. Two queries total, regardless of N. Alternative: a single LEFT JOIN orders/items query and group server-side."
     },
@@ -280,7 +280,7 @@ For reference, here is what your entire response — the complete JSON object �
       "severity": "medium",
       "category": "capacity-planning",
       "title": "Outer SELECT has no LIMIT; endpoint latency grows linearly with order count",
-      "location": "tests/fixtures/go-api/handler/orders.go:45",
+      "evidence": { "path": "tests/fixtures/go-api/handler/orders.go", "line_start": 45 },
       "explanation": "Capacity memo: at 10k orders and ~0.1 ms per row scan, the outer query alone takes ~1 s in pure scan time, before the N+1 is even considered. Even after fixing N+1, returning all orders without pagination means latency on this endpoint is bounded only by the size of the orders table — not a per-request budget. For any user with thousands of historical orders, this endpoint will exceed any reasonable p95 SLO.",
       "suggestion": "Add LIMIT and OFFSET (or a keyset pagination cursor) to the outer query: SELECT id, user_id, total FROM orders WHERE user_id = $1 ORDER BY id DESC LIMIT $2 OFFSET $3. Expose page-size and cursor as query params. For best-in-class, switch to keyset pagination (WHERE id < $cursor LIMIT $size) to avoid OFFSET cost on deep pages."
     },
@@ -288,7 +288,7 @@ For reference, here is what your entire response — the complete JSON object �
       "severity": "medium",
       "category": "missing-cache",
       "title": "Read-heavy orders endpoint has no caching layer",
-      "location": "tests/fixtures/go-api/handler/orders.go:29-36",
+      "evidence": { "path": "tests/fixtures/go-api/handler/orders.go", "line_start": 29, "line_end": 36 },
       "explanation": "Capacity memo: a logged-in user's order list is typically refreshed 3-5 times per session and changes only on a new order or status update. A 30-second per-user cache would absorb 70-80% of repeat requests at near-zero latency. With the N+1 currently in place, every cache miss is expensive; once N+1 is fixed, caching still cuts steady-state DB load substantially.",
       "suggestion": "Introduce a per-user, per-process LRU cache with a 30 s TTL keyed on userID. Invalidate on order create/update/cancel events emitted from the order-write paths. For multi-instance deployments, switch to Redis with the same key structure once the in-memory version is proven."
     }
@@ -297,4 +297,4 @@ For reference, here is what your entire response — the complete JSON object �
 }
 ```
 
-Notice: every required field present, `persona`/`stage`/`model_used` match the frontmatter, `score` agrees with the verdict (5/10 with one high and two medium findings is `concerns`, not `block`), `summary_quote` is under 280 chars, every finding includes a capacity memo with numeric impact at the front of the `explanation`, `findings` has exactly the issues that belong to this lens, and `stage_handoff_notes` cross-references prior_findings (the `ctx interface{}` Stage 1 issue's perf implication) without re-flagging it as a separate finding. Begin your response with `{`, end with `}`, and emit nothing else.
+Notice: every required field present, `persona`/`stage`/`model_used` match the frontmatter, `score` agrees with the verdict (5/10 with one high and two medium findings is `concerns`, not `block`), `summary_quote` is under 500 chars, every finding includes a capacity memo with numeric impact at the front of the `explanation`, `findings` has exactly the issues that belong to this lens, and `stage_handoff_notes` cross-references prior_findings (the `ctx interface{}` Stage 1 issue's perf implication) without re-flagging it as a separate finding. Begin your response with `{`, end with `}`, and emit nothing else.

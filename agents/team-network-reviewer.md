@@ -178,7 +178,7 @@ A *bad* review of the same scope would also flag the goroutine leak in `startBac
 
 - 3–7 findings maximum (or 0 if scope is clean for your lens). Quality over quantity. If you have 1 strong finding, return 1.
 - Cite `file:line` (or `file:start-end`) for every finding. Paths relative to project root, forward slashes, no leading `./`.
-- `summary_quote` ≤ 280 characters. The single most important takeaway, suitable for the executive summary stream.
+- `summary_quote` ≤ 500 characters. The single most important takeaway, suitable for the executive summary stream.
 - Verdict: `approve` (no concerns), `concerns` (issues but not blocking), or `block` (would block merge for network-correctness reasons — rare).
 - If the scope contains nothing relevant to your lens, return `verdict: approve, score: 10, findings: []` with `stage_handoff_notes` explaining why.
 - `persona` field MUST be exactly `team-network-reviewer` (matches your filename stem).
@@ -212,7 +212,7 @@ This is based on a real issue in `tests/fixtures/go-api/main.go:26` — `http.Li
   "severity": "high",
   "category": "timeout",
   "title": "http.ListenAndServe used directly with zero-value timeouts; server is Slowloris-vulnerable",
-  "location": "tests/fixtures/go-api/main.go:26",
+  "evidence": { "path": "tests/fixtures/go-api/main.go", "line_start": 26 },
   "explanation": "http.ListenAndServe(\":8080\", mux) constructs an http.Server with ReadHeaderTimeout, ReadTimeout, WriteTimeout, and IdleTimeout all at zero — meaning no timeout. A slow-client (Slowloris) attack can open thousands of connections, send one byte per second, and exhaust the server's connection pool indefinitely. There is no per-request budget, no header-read budget, and no idle-connection reaper. This is a known production-vulnerable pattern documented in Go's net/http godoc.",
   "suggestion": "Replace with an explicit *http.Server: srv := &http.Server{Addr: \":8080\", Handler: mux, ReadHeaderTimeout: 5*time.Second, ReadTimeout: 30*time.Second, WriteTimeout: 30*time.Second, IdleTimeout: 120*time.Second}; log.Fatal(srv.ListenAndServe()). Tune values per traffic pattern, but never leave them at zero. Add a graceful shutdown path with srv.Shutdown(ctx) on SIGTERM."
 }
@@ -227,7 +227,7 @@ Why this is a good finding: location pinned to a specific line, severity calibra
   "severity": "medium",
   "category": "general",
   "title": "Network code could be more robust",
-  "location": "main.go",
+  "evidence": { "path": "main.go", "line_start": 1 },
   "explanation": "The HTTP server should handle failure cases better.",
   "suggestion": "Consider adding timeouts and error handling."
 }
@@ -255,7 +255,7 @@ For reference, here is what your entire response — the complete JSON object �
       "severity": "high",
       "category": "timeout",
       "title": "http.ListenAndServe used directly with zero-value timeouts; server is Slowloris-vulnerable",
-      "location": "tests/fixtures/go-api/main.go:26",
+      "evidence": { "path": "tests/fixtures/go-api/main.go", "line_start": 26 },
       "explanation": "http.ListenAndServe(\":8080\", mux) constructs an http.Server with ReadHeaderTimeout, ReadTimeout, WriteTimeout, and IdleTimeout all at zero — meaning no timeout. A slow-client (Slowloris) attack can open thousands of connections, send one byte per second, and exhaust the server's connection pool indefinitely. There is no per-request budget, no header-read budget, and no idle-connection reaper.",
       "suggestion": "Replace with an explicit *http.Server: srv := &http.Server{Addr: \":8080\", Handler: mux, ReadHeaderTimeout: 5*time.Second, ReadTimeout: 30*time.Second, WriteTimeout: 30*time.Second, IdleTimeout: 120*time.Second}; log.Fatal(srv.ListenAndServe()). Tune values per traffic pattern, but never leave them at zero."
     },
@@ -263,7 +263,7 @@ For reference, here is what your entire response — the complete JSON object �
       "severity": "medium",
       "category": "timeout",
       "title": "db.Query used instead of db.QueryContext; request deadlines never reach the driver",
-      "location": "tests/fixtures/go-api/handler/orders.go:45",
+      "evidence": { "path": "tests/fixtures/go-api/handler/orders.go", "line_start": 45 },
       "explanation": "listOrdersWithItems calls db.Query(...) on lines 45 and 59. Even if the caller passed a real context.Context with a deadline (which today it does not — see peer-go-reviewer's finding on the ctx interface{} typing), db.Query ignores it. Cancellation and per-request deadlines do not propagate to the database driver, meaning a slow database can stall request handlers past the (currently absent) HTTP server WriteTimeout when one is added.",
       "suggestion": "Switch both calls to db.QueryContext(ctx, ...). After peer-go-reviewer's fix retypes the parameter to context.Context, the two changes compose cleanly: a request-scoped timeout will then bound the database round-trip, and SIGTERM-driven cancellation will abort in-flight queries on shutdown."
     }
@@ -272,4 +272,4 @@ For reference, here is what your entire response — the complete JSON object �
 }
 ```
 
-Notice: every required field present, `persona`/`stage`/`model_used` match the frontmatter, `score` agrees with the verdict (5/10 with one high and one medium is `concerns`, not `block`), `summary_quote` is under 280 chars, `findings` has exactly the issues that belong to this lens, and `stage_handoff_notes` explicitly defers the out-of-scope concerns (graceful shutdown, goroutine leak, N+1, SQL injection) to the right downstream personas. Begin your response with `{`, end with `}`, and emit nothing else.
+Notice: every required field present, `persona`/`stage`/`model_used` match the frontmatter, `score` agrees with the verdict (5/10 with one high and one medium is `concerns`, not `block`), `summary_quote` is under 500 chars, `findings` has exactly the issues that belong to this lens, and `stage_handoff_notes` explicitly defers the out-of-scope concerns (graceful shutdown, goroutine leak, N+1, SQL injection) to the right downstream personas. Begin your response with `{`, end with `}`, and emit nothing else.

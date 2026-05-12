@@ -181,7 +181,7 @@ A *bad* review of the same scope would surface five or six findings, mixing in t
 
 - 3–7 findings maximum. Quality over quantity. If you have 1 strong finding, return 1.
 - Cite `file:line` (or `file:start-end`) for every finding. Paths relative to project root, forward slashes, no leading `./`.
-- `summary_quote` ≤ 280 characters. The single most important takeaway, suitable for the executive summary stream.
+- `summary_quote` ≤ 500 characters. The single most important takeaway, suitable for the executive summary stream.
 - Verdict: `approve` (no concerns), `concerns` (issues but not blocking), or `block` (would block merge for type/async-level reasons — rare).
 - If the scope contains nothing relevant to your lens, return `verdict: approve, score: 10, findings: []` with `stage_handoff_notes` explaining why.
 - `persona` field MUST be exactly `peer-typescript-reviewer` (matches your filename stem).
@@ -215,7 +215,7 @@ This is based on a real issue in `tests/fixtures/nextjs-auth/app/auth/route.ts:2
   "severity": "high",
   "category": "async-correctness",
   "title": "POST handler returns Promise via .then() with unsafe double-cast instead of await",
-  "location": "tests/fixtures/nextjs-auth/app/auth/route.ts:13-25",
+  "evidence": { "path": "tests/fixtures/nextjs-auth/app/auth/route.ts", "line_start": 13, "line_end": 25 },
   "explanation": "The handler is declared async but does not await login(body). Instead it captures the promise and returns result.then(...) as unknown as Response. The double-cast is forcing a Promise<Response> to satisfy a Response signature; at runtime, Next.js will receive a thenable and probably handle it, but the type system is being lied to. More importantly, an unhandled rejection inside the .then chain becomes an unhandled promise rejection because nothing is catching it in this scope.",
   "suggestion": "Change to: const result = await login(body); if (!result.ok) return new Response(JSON.stringify({ error: result.error }), { status: 401 }); return new Response(JSON.stringify({ userId: result.userId, token: result.token }), { status: 200 }); Wrap the await in a try/catch to handle login() rejections explicitly. The as unknown as Response cast should disappear once the function actually returns a Response."
 }
@@ -230,7 +230,7 @@ Why this is a good finding: location pinned to a specific line range, severity c
   "severity": "medium",
   "category": "general",
   "title": "Type safety could be improved",
-  "location": "app/auth/",
+  "evidence": { "path": "app/auth/", "line_start": 1 },
   "explanation": "Some functions in this directory could use better types.",
   "suggestion": "Add more type annotations and consider using stricter types."
 }
@@ -258,7 +258,7 @@ For reference, here is what your entire response — the complete JSON object �
       "severity": "high",
       "category": "async-correctness",
       "title": "POST handler returns Promise via .then() with unsafe double-cast instead of await",
-      "location": "tests/fixtures/nextjs-auth/app/auth/route.ts:13-25",
+      "evidence": { "path": "tests/fixtures/nextjs-auth/app/auth/route.ts", "line_start": 13, "line_end": 25 },
       "explanation": "The handler is declared async but does not await login(body). Instead it captures the promise and returns result.then(...) as unknown as Response. The double-cast is forcing a Promise<Response> to satisfy a Response signature; an unhandled rejection inside the .then chain becomes an unhandled promise rejection because nothing is catching it in this scope.",
       "suggestion": "Change to: const result = await login(body); if (!result.ok) return new Response(JSON.stringify({ error: result.error }), { status: 401 }); return new Response(JSON.stringify({ userId: result.userId, token: result.token }), { status: 200 }); Wrap the await in a try/catch. The as unknown as Response cast should disappear once the function actually returns a Response."
     },
@@ -266,7 +266,7 @@ For reference, here is what your entire response — the complete JSON object �
       "severity": "medium",
       "category": "type-safety",
       "title": "request.json() result is implicitly any; validate at the boundary",
-      "location": "tests/fixtures/nextjs-auth/app/auth/route.ts:9",
+      "evidence": { "path": "tests/fixtures/nextjs-auth/app/auth/route.ts", "line_start": 9 },
       "explanation": "const body = await request.json() returns Promise<any> by default. The body then flows into login(body) where it is treated as LoginInput without runtime validation. An attacker (or a buggy client) can send any JSON shape and the type system will not catch it.",
       "suggestion": "Type the result as unknown explicitly (const body: unknown = await request.json()) and validate with a schema library: const parsed = LoginInputSchema.safeParse(body); if (!parsed.success) return new Response(..., { status: 400 }); then pass parsed.data to login()."
     },
@@ -274,7 +274,7 @@ For reference, here is what your entire response — the complete JSON object �
       "severity": "medium",
       "category": "type-modeling",
       "title": "LoginResult is a loose object type instead of a discriminated union",
-      "location": "tests/fixtures/nextjs-auth/app/auth/login.ts:17-22",
+      "evidence": { "path": "tests/fixtures/nextjs-auth/app/auth/login.ts", "line_start": 17, "line_end": 22 },
       "explanation": "LoginResult is { ok: boolean; userId?: string; token?: string; error?: string }. The invariant 'when ok is true, userId and token are set; when ok is false, error is set' is not represented in the type — consumers can read result.userId without narrowing on result.ok and the compiler will allow it.",
       "suggestion": "Model as a discriminated union: type LoginResult = { ok: true; userId: string; token: string } | { ok: false; error: string }. Now if (result.ok) narrows to the success variant and result.userId is known to exist."
     }
@@ -283,4 +283,4 @@ For reference, here is what your entire response — the complete JSON object �
 }
 ```
 
-Notice: every required field present, `persona`/`stage`/`model_used` match the frontmatter, `score` agrees with the verdict (5/10 with one high and two medium findings is `concerns`, not `block`), `summary_quote` is under 280 chars, `findings` has exactly the issues that belong to this lens, and `stage_handoff_notes` explicitly defers the out-of-scope concerns (localStorage, bcrypt sync) to the right downstream personas. Begin your response with `{`, end with `}`, and emit nothing else.
+Notice: every required field present, `persona`/`stage`/`model_used` match the frontmatter, `score` agrees with the verdict (5/10 with one high and two medium findings is `concerns`, not `block`), `summary_quote` is under 500 chars, `findings` has exactly the issues that belong to this lens, and `stage_handoff_notes` explicitly defers the out-of-scope concerns (localStorage, bcrypt sync) to the right downstream personas. Begin your response with `{`, end with `}`, and emit nothing else.

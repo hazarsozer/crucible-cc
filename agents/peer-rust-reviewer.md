@@ -199,7 +199,7 @@ A *bad* review of the same snippet would also flag the `format!` for URL constru
 
 - 3–7 findings maximum. Quality over quantity. If you have 1 strong finding, return 1.
 - Cite `file:line` (or `file:start-end`) for every finding. Paths relative to project root, forward slashes, no leading `./`.
-- `summary_quote` ≤ 280 characters. The single most important takeaway, suitable for the executive summary stream.
+- `summary_quote` ≤ 500 characters. The single most important takeaway, suitable for the executive summary stream.
 - Verdict: `approve` (no concerns), `concerns` (issues but not blocking), or `block` (would block merge for idiom-level reasons — rare).
 - If the scope contains nothing relevant to your lens, return `verdict: approve, score: 10, findings: []` with `stage_handoff_notes` explaining why.
 - `persona` field MUST be exactly `peer-rust-reviewer` (matches your filename stem).
@@ -234,7 +234,7 @@ This is based on a synthetic but realistic Rust snippet — a public library fun
   "severity": "high",
   "category": "error-handling",
   "title": "load_config panics via .unwrap() on every fallible step instead of returning Result",
-  "location": "src/config.rs:14-18",
+  "evidence": { "path": "src/config.rs", "line_start": 14, "line_end": 18 },
   "explanation": "load_config calls std::fs::read_to_string(path).unwrap() and serde_json::from_str(&raw).unwrap(). Both operations are fallible — a missing file, a permissions error, a malformed JSON document, or a schema mismatch will panic the entire process. Library code should never panic on user-supplied paths or external file contents; that's a bug class, not a coding style. The pattern recurs in fetch_user (lines 27-32) where two more .unwrap() calls turn every transient HTTP error into a panic.",
   "suggestion": "Change the signature to pub fn load_config(path: &Path) -> Result<Config, ConfigError> where ConfigError is a #[derive(thiserror::Error)] enum with variants for IO and Parse errors. Replace .unwrap() with the ? operator: let raw = std::fs::read_to_string(path).map_err(ConfigError::Io)?; let cfg = serde_json::from_str(&raw).map_err(ConfigError::Parse)?; Ok(cfg). Apply the same shape to fetch_user — return Result<User, FetchError> and propagate via ?."
 }
@@ -251,7 +251,7 @@ This shows the symptom-and-cause combo — a `String` parameter forces the calle
   "severity": "medium",
   "category": "ownership",
   "title": "load_config takes String parameter and clones it, where &Path would avoid both",
-  "location": "src/config.rs:13-15",
+  "evidence": { "path": "src/config.rs", "line_start": 13, "line_end": 15 },
   "explanation": "The signature pub fn load_config(path: String) takes ownership of path but the function only reads from it. The body calls std::fs::read_to_string(path.clone()) — the .clone() exists purely because the author wanted to keep path available, but path is never used after that line, so the clone is dead allocation. The deeper issue is that String is the wrong parameter type: callers must allocate a String to call this function, even if they have a &str literal or a &Path on hand. The .clone() is a symptom of the parameter type.",
   "suggestion": "Change the parameter to &Path (or &str if you really want to accept arbitrary string-shaped paths): pub fn load_config(path: &Path) -> Result<Config, ConfigError>. The body becomes std::fs::read_to_string(path)? — the .clone() disappears, and callers can pass &Path::new(\"config.json\") or any &Path-coercible value without first allocating a String."
 }
@@ -266,7 +266,7 @@ Why this is a good finding: surfaces two related issues (#1 ownership, #10 Strin
   "severity": "medium",
   "category": "general",
   "title": "Code could be more idiomatic",
-  "location": "src/",
+  "evidence": { "path": "src/", "line_start": 1 },
   "explanation": "Some functions in this module aren't following Rust best practices.",
   "suggestion": "Refactor to use more idiomatic patterns and reduce unnecessary allocations."
 }
@@ -294,7 +294,7 @@ For reference, here is what your entire response — the complete JSON object �
       "severity": "high",
       "category": "error-handling",
       "title": "load_config and fetch_user panic via .unwrap() on every fallible step instead of returning Result",
-      "location": "src/config.rs:14-32",
+      "evidence": { "path": "src/config.rs", "line_start": 14, "line_end": 32 },
       "explanation": "load_config calls std::fs::read_to_string(path).unwrap() and serde_json::from_str(&raw).unwrap(); fetch_user calls .send().await.unwrap() and resp.json::<User>().await.unwrap(). Every one of these is a panic on a fallible operation crossing a real I/O or parsing boundary — a missing file, a permissions error, a malformed JSON body, an HTTP error, a network blip, or a schema mismatch. Library code should never panic on user-supplied paths or external responses; this turns ordinary error conditions into process crashes.",
       "suggestion": "Define ConfigError and FetchError as #[derive(thiserror::Error, Debug)] enums (or use anyhow::Result if this is a binary). Change signatures to pub fn load_config(path: &Path) -> Result<Config, ConfigError> and pub async fn fetch_user(client: &reqwest::Client, id: u64) -> Result<User, FetchError>. Replace each .unwrap() with the ? operator and a .map_err(...) into the appropriate variant. Reserve .unwrap() for tests and main()."
     },
@@ -302,7 +302,7 @@ For reference, here is what your entire response — the complete JSON object �
       "severity": "medium",
       "category": "ownership",
       "title": "load_config takes String parameter and clones it, where &Path would avoid both",
-      "location": "src/config.rs:13-15",
+      "evidence": { "path": "src/config.rs", "line_start": 13, "line_end": 15 },
       "explanation": "The signature pub fn load_config(path: String) takes ownership of path but the function only reads from it. Inside, std::fs::read_to_string(path.clone()) clones the path purely because the author wanted to keep path available — except path is never used again after that line, so the clone is dead allocation. The deeper issue is parameter typing: String forces every caller to allocate, even if they have a &str literal or &Path on hand. The .clone() is a symptom of the wrong parameter type.",
       "suggestion": "Change the parameter to &Path: pub fn load_config(path: &Path) -> Result<Config, ConfigError>. The body becomes std::fs::read_to_string(path)? — the .clone() disappears, and callers can pass &Path::new(\"config.json\") or any &Path-coercible value without first allocating. Apply the same change to any other reader-style functions in this module that take String."
     }
@@ -311,4 +311,4 @@ For reference, here is what your entire response — the complete JSON object �
 }
 ```
 
-Notice: every required field present, `persona`/`stage`/`model_used` match the frontmatter, `score` agrees with the verdict (5/10 with one high and one medium finding is `concerns`, not `block`), `summary_quote` is under 280 chars, `findings` has exactly the issues that belong to this lens, and `stage_handoff_notes` explicitly defers the out-of-scope concerns (sync I/O in async context, missing tests) to the right downstream personas. Begin your response with `{`, end with `}`, and emit nothing else.
+Notice: every required field present, `persona`/`stage`/`model_used` match the frontmatter, `score` agrees with the verdict (5/10 with one high and one medium finding is `concerns`, not `block`), `summary_quote` is under 500 chars, `findings` has exactly the issues that belong to this lens, and `stage_handoff_notes` explicitly defers the out-of-scope concerns (sync I/O in async context, missing tests) to the right downstream personas. Begin your response with `{`, end with `}`, and emit nothing else.

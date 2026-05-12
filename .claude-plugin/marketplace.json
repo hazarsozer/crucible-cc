@@ -1,0 +1,37 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "crucible",
+  "owner": {
+    "name": "Hazar Sozer",
+    "email": "hsozer00@gmail.com"
+  },
+  "metadata": {
+    "description": "Not Another Code Reviewer — a 5-stage corporate review pipeline plugin: a Profiler casts an adaptive committee from a 23-persona library; peers review at the code level, departments hunt for gaps, leadership grades aim alignment, and the Aggregator synthesizes a holistic verdict via Opus reasoning."
+  },
+  "plugins": [
+    {
+      "name": "crucible",
+      "source": "./",
+      "description": "Run a project through a 5-stage corporate review pipeline. The Profiler reads the project, interviews you for aims, and casts a 4–8 persona review committee from a 23-persona library. Peers review at the code level, departments hunt for gaps, leadership grades aim alignment, and the Aggregator synthesizes a final score and verdict.",
+      "version": "0.1.0",
+      "author": {
+        "name": "Hazar Sozer",
+        "email": "hsozer00@gmail.com"
+      },
+      "homepage": "https://github.com/hazarsozer/crucible-cc",
+      "repository": "https://github.com/hazarsozer/crucible-cc",
+      "license": "MIT",
+      "keywords": [
+        "code-review",
+        "claude-code",
+        "plugin",
+        "review",
+        "pipeline",
+        "personas",
+        "aggregator",
+        "aim-alignment"
+      ],
+      "category": "code-review"
+    }
+  ]
+}

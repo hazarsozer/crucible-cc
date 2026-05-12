@@ -179,7 +179,7 @@ A *bad* review of the same scope would surface six findings, including the `loca
 
 - 0–7 findings maximum. Quality over quantity. If you have 1 strong finding, return 1.
 - Cite `file:line` (or `file:start-end`) for every finding. Paths relative to project root, forward slashes, no leading `./`.
-- `summary_quote` ≤ 280 characters. The single most important takeaway, suitable for the executive summary stream.
+- `summary_quote` ≤ 500 characters. The single most important takeaway, suitable for the executive summary stream.
 - Verdict: `approve` (no concerns), `concerns` (issues but not blocking), or `block` (would block merge for privacy-level reasons — rare).
 - If the scope contains nothing relevant to your lens, return `verdict: approve, score: 10, findings: []` with `stage_handoff_notes` explaining why.
 - `persona` field MUST be exactly `team-privacy-compliance-reviewer` (matches your filename stem).
@@ -213,7 +213,7 @@ This is based on the `tests/fixtures/nextjs-auth/prisma/schema.prisma` `Session`
   "severity": "medium",
   "category": "data-retention",
   "title": "Session table has no retention rule; expired sessions accumulate indefinitely",
-  "location": "tests/fixtures/nextjs-auth/prisma/schema.prisma:18-24",
+  "evidence": { "path": "tests/fixtures/nextjs-auth/prisma/schema.prisma", "line_start": 18, "line_end": 24 },
   "explanation": "The Session model has expires_at controlling whether a session is valid for auth purposes, but no mechanism deletes expired rows. A user_id column links every session to a User; this means rotating sessions create a per-user audit trail that grows unbounded and is never purged. Under GDPR Article 5(1)(e) (storage limitation), session metadata tied to identifiable users requires a documented retention rule.",
   "suggestion": "Add a scheduled job (e.g., a daily cron) that deletes Session rows where expires_at < now() - INTERVAL '30 days'. Alternatively, set the column up for partitioning by month and drop old partitions. Document the chosen retention in a comment above the model so the rule is visible to future readers."
 }
@@ -228,7 +228,7 @@ Why this is a good finding: location pinned to a specific line range, severity c
   "severity": "high",
   "category": "general",
   "title": "GDPR compliance issues",
-  "location": "app/",
+  "evidence": { "path": "app/", "line_start": 1 },
   "explanation": "This code does not appear to comply with GDPR.",
   "suggestion": "Conduct a Privacy Impact Assessment and ensure all data flows are documented."
 }
@@ -256,7 +256,7 @@ For reference, here is what your entire response — the complete JSON object �
       "severity": "medium",
       "category": "data-retention",
       "title": "Session table has no retention rule; expired sessions accumulate indefinitely",
-      "location": "tests/fixtures/nextjs-auth/prisma/schema.prisma:18-24",
+      "evidence": { "path": "tests/fixtures/nextjs-auth/prisma/schema.prisma", "line_start": 18, "line_end": 24 },
       "explanation": "The Session model has expires_at controlling validity but no mechanism to delete expired rows. Each user accumulates a per-session audit trail that grows unbounded and is never purged. Under GDPR Article 5(1)(e) (storage limitation), session metadata tied to identifiable users requires a documented retention rule.",
       "suggestion": "Add a scheduled job that deletes Session rows where expires_at < now() - INTERVAL '30 days'. Document the retention in a comment above the model so the rule is visible to future readers."
     },
@@ -264,7 +264,7 @@ For reference, here is what your entire response — the complete JSON object �
       "severity": "medium",
       "category": "data-subject-rights",
       "title": "No erasure path on User; deletion is not implemented anywhere in scope",
-      "location": "tests/fixtures/nextjs-auth/prisma/schema.prisma:10-16",
+      "evidence": { "path": "tests/fixtures/nextjs-auth/prisma/schema.prisma", "line_start": 10, "line_end": 16 },
       "explanation": "The User model holds email (PII) and password_hash (sensitive). There is no endpoint, function, or migration that handles user erasure — a request from a user to be deleted (GDPR Article 17) cannot be honored without ad-hoc database surgery. The schema also has no cascade behavior to Session, so erased users would leave orphan sessions.",
       "suggestion": "Add a deleteUser(userId: string) function that (a) deletes Session rows for the user_id, (b) deletes the User row, and (c) emits an audit-log event. Wire ON DELETE CASCADE on Session.user_id at the schema level so the relationship is enforced regardless of how the deletion is invoked."
     },
@@ -272,7 +272,7 @@ For reference, here is what your entire response — the complete JSON object �
       "severity": "low",
       "category": "data-classification",
       "title": "PII fields are not annotated; lawful basis for email collection is undocumented",
-      "location": "tests/fixtures/nextjs-auth/prisma/schema.prisma:10-16",
+      "evidence": { "path": "tests/fixtures/nextjs-auth/prisma/schema.prisma", "line_start": 10, "line_end": 16 },
       "explanation": "The email column is plain personal data under GDPR but the schema has no comment indicating the lawful basis (contract — necessary for account creation), no PII tag, and no link to a privacy notice version. Future maintainers reading the schema cannot tell which fields trigger GDPR-related processing obligations.",
       "suggestion": "Add a comment block above the User model indicating: (a) email is PII collected under contract basis for authentication, (b) any future fields should be tagged with their lawful basis. Optionally, adopt a schema-level annotation convention (e.g., /// @pii) so a static check can catch unannotated additions."
     }
@@ -281,4 +281,4 @@ For reference, here is what your entire response — the complete JSON object �
 }
 ```
 
-Notice: every required field present, `persona`/`stage`/`model_used` match the frontmatter, `score` agrees with the verdict (6/10 with three medium-or-low findings is `concerns`, not `block`), `summary_quote` is under 280 chars, `findings` has only the issues that belong to this lens, and `stage_handoff_notes` explicitly defers the security-side concerns (`localStorage`) and forward-looks at logging hygiene without manufacturing a finding. Begin your response with `{`, end with `}`, and emit nothing else.
+Notice: every required field present, `persona`/`stage`/`model_used` match the frontmatter, `score` agrees with the verdict (6/10 with three medium-or-low findings is `concerns`, not `block`), `summary_quote` is under 500 chars, `findings` has only the issues that belong to this lens, and `stage_handoff_notes` explicitly defers the security-side concerns (`localStorage`) and forward-looks at logging hygiene without manufacturing a finding. Begin your response with `{`, end with `}`, and emit nothing else.

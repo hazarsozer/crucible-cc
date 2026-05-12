@@ -22,10 +22,12 @@ The result: every persona reasons in their lane, the stages hand off structured 
 
 ## Quick start
 
+Inside Claude Code, add Crucible as a self-hosted marketplace and install the plugin (one-time setup):
+
 ```bash
-# Local install (until marketplace listing lands):
-git clone https://github.com/hazarsozer/crucible-cc.git
-claude --plugin-dir ./crucible-cc
+/plugin marketplace add hazarsozer/crucible-cc
+/plugin install crucible@crucible
+/reload-plugins
 ```
 
 Then, in any project directory:
@@ -34,6 +36,17 @@ Then, in any project directory:
 cd your-project
 /crucible:run
 ```
+
+<details>
+<summary><em>Alternative: clone the repo and load it directly (no install step)</em></summary>
+
+```bash
+git clone https://github.com/hazarsozer/crucible-cc.git
+claude --plugin-dir ./crucible-cc
+```
+
+Useful if you want full source on disk to read, modify, or contribute back. The `/plugin install` path above copies Crucible to Claude Code's cache automatically.
+</details>
 
 Optional commands:
 
@@ -234,10 +247,11 @@ Key notes:
   📋 lead-project-manager: "Phase aim achieved; one security gap blocks 'production-ready'."
 
 📁 Full report: .review/reports/2026-05-10-1430-auth-refactor.md
-   Wall-clock: 25m 04s · API cost: $5.22
 ```
 
 The saved markdown report is fully detailed — every persona's full findings, scoring, reasoning, and stage-handoff notes are preserved, plus the aims snapshot, casting roster, and run metadata. See [`examples/nextjs-auth-refactor.md`](examples/nextjs-auth-refactor.md) for a complete demo.
+
+Wall-clock time and API cost are not printed by Crucible — Claude Code reports both natively at session end and on demand via `/status`, with measurements more accurate than anything a plugin skill can compute from inside the run.
 
 ---
 
@@ -281,23 +295,61 @@ Crucible uses **per-persona model tiering** to keep cost reasonable while preser
 
 **Measured run cost (v0.1.0, across all three bundled fixtures — 5–7 files each):**
 
-| | Per run |
-|---|---|
-| API cost | **$5–7** (median ~$5.22 across 5 runs) |
-| Wall time | **20–35 min** |
-| Max-plan quota | **~10–15% per run** |
+| Session model | Cost per run | Max quota | Notes |
+|---|---|---|---|
+| **Haiku 4.5** | **~$3–4** (1 measured run at $3.26 on pytorch-trainer) | **~6–7%** | Cheapest. Report template adherence is looser — section names may improvise, per-persona detail may collapse to one-liners, the Run Metadata block may be skipped. Pipeline integrity is good (real subagent dispatches, real findings — see "Architectural finding" below). Heads-up: a single Crucible run consumes **~75% of Haiku's 200K context window**, so start a fresh Claude Code session before running Crucible if you've been using it heavily already. |
+| **Sonnet 4.6** (recommended) | **~$4.50–7** (6 measured runs, median $5.22, range $4.78–$6.75) | **~10–15%** | Balanced. Detailed per-persona findings sections with full file:line citations. Template adherence is usually canonical but not always — one of the six measured runs improvised (table-style stage blocks, condensed headings, the `## Stage 0 — Profiler` section skipped). The deterministic Python renderer in v0.1.1 will fix this. The default recommendation regardless. |
+| **Opus 4.7** | **~$8–10** (1 measured run at $8.95 on the cheapest fixture; ~1.7× Sonnet) | **~15%+** | Most expensive. Doesn't add much value at the orchestrator layer — the deep reasoning the pipeline needs already happens in dispatched Opus subagents (Stage 3 leadership + Aggregator), regardless of your main-thread model. Pay Opus rates only if you have a specific reason. |
 
-Five measured runs: three on the 7-file Next.js fixture ($5.16, $6.75, $5.22), one on the 5-file Go fixture ($5.60), and one on the 6-file PyTorch fixture ($4.78). Cost is more sensitive to model output verbosity and to project complexity than to project language:
+Wall time **10–35 min** · Larger projects scale up proportionally to file count and cast size.
 
-- **Within-fixture verbosity variance is the dominant noise source.** One of the three Next.js runs wrote a ~30% chattier report — same cast, same scope, ~$1.50 over the others.
-- **Cross-project variance is small for similar-sized fixtures.** All five runs fall in $4.78–$6.75. The ML run is the cheapest because the Profiler cast 8 personas rather than the 10 cast on nextjs and go-api — Frontend, Database, Network, and Privacy reviewers were correctly skipped for an ML pipeline.
-- **Cast size and composition both depend on project type.** The ML pipeline got an 8-persona cast (`peer-python` + `peer-quality`; `team-security` + `team-data-ml` + `team-performance` + `team-observability`; plus 2 leadership). The Next.js and Go runs each got 10-persona casts; the Go cast swapped `peer-go-reviewer` + `team-network-reviewer` + `team-observability-reviewer` in for `peer-typescript-reviewer` + `peer-sql-reviewer` + `team-privacy-compliance-reviewer`. Composition shifts substantially per project type.
+### Architectural finding: orchestrator model dominates cost
 
-**Larger projects will cost more.** The orchestrator pastes file contents into each Stage 1/2 persona's prompt; cache reads amortize most of the bytes across personas, but every new file adds to the cache footprint. Projects with more files, more languages, or stricter aims will pull a wider cast and bigger payloads.
+Crucible's orchestration runs in your Claude Code main thread (`skills/run/SKILL.md` is read and executed by your current session). The bookkeeping work — reading scope files, parsing 7–11 persona JSON returns, validating against schemas, rendering the markdown report — accumulates cache reads at your session's model rate. This makes the orchestrator's model the dominant cost variable, not the per-stage subagent tiers.
 
-**Per-model split** (typical run): Sonnet 4.6 dominates at ~$2.85–$4.65 (Profiler + reviewers, Stage 1+2); Opus 4.7 contributes ~$1.45–$2.00 (Stage 3 leadership + Aggregator synthesis); Haiku 4.5 is ~$0.10–$0.15 (orchestrator bookkeeping).
+**`/crucible:run` opens with a cost preview and a y/n confirmation** so you can choose to `/model claude-haiku-4-5-20251001` or `/model claude-sonnet-4-6` before proceeding. Crucible cannot detect or change your session model from inside a Skill, so the preview is the closest thing to cost control the plugin offers. The preview text itself is in `skills/run/SKILL.md` and lists the same per-model ranges as the table above.
 
-Crucible runs comfortably on **Claude Max** (~4–6 full-project reviews before hitting the quota refresh window) and on **Claude Pro** with one caveat: Pro caps Opus access, so heavy users should scope reviews tighter — a phase review casts ~5 personas vs. ~8–10 for a full-project review, with proportional cost reduction. Larger-project cost data (real-world codebases beyond 5–7 files) lands in v0.1.1.
+**v0.1.0 architectural exploration** (worth documenting because it nearly shipped and would have silently broken):
+
+We attempted to move orchestration into a dedicated `coordinator` subagent so the cache-heavy bookkeeping would run at a fixed model tier regardless of the user's session. Two failure modes blocked it:
+
+1. **Haiku-as-coordinator silently impersonated personas.** First verification run on `pytorch-trainer` cost $1.07 total instead of the target $4–6. Looks like a win until the cost split is examined: Sonnet was $0 despite seven personas claiming `model_used: claude-sonnet-4-6` in their saved JSONs, Opus was $0.54 (just main-thread overhead), and 3.3M Haiku cache reads = Haiku reading every persona system prompt and generating outputs that matched the persona's JSON shape from inside its own context — without ever calling the Task tool. The findings were plausible but the plugin was lying about who produced what.
+
+2. **Sonnet-as-coordinator broke user interactivity.** Escalating the coordinator to Sonnet fixed the impersonation discipline (Sonnet did real dispatches, real Sonnet/Opus cost showed up in `/status`), but introduced a different failure: the Profiler is a subagent that must interactively prompt the user (`"I found existing aims. Are these still accurate?"`, `"Proceed with this committee?"`). When the Profiler is dispatched as a sub-subagent (`coordinator → profiler`), nested subagent dispatch loses the user-interaction channel. The Profiler ran, did its work mechanically, and never prompted the user. Cost came in at the $4–6 target but the interactive UX broke.
+
+**v0.1.0 ships main-thread orchestration with the cost-preview prompt** instead. The cost-vs-orchestrator-model coupling stays, but the user is warned and can opt to switch model before the run.
+
+**Worth noting: Haiku as the main-thread orchestrator works** (verification on `pytorch-trainer`, 2026-05-12: $3.26 total cost, real Sonnet ($1.04) and Opus ($1.42) subagent dispatches measured, no impersonation). The impersonation failure mode was specific to Haiku running *inside* a dispatched coordinator subagent, where the SKILL.md `Task(...)` blocks read as workflow descriptions rather than tool invocations. On the main thread Haiku correctly invokes the Task tool. The trade-off is template adherence: Haiku's rendered markdown report improvises section names, abbreviates per-persona findings to one-liners, and may skip the Run Metadata block. Use Haiku for cost-sensitive runs where the executive summary is the primary output; use Sonnet for the best balance of cost and report polish, with the caveat that Sonnet has been measured occasionally improvising the report template too (see CHANGELOG "Known limitations" — a deterministic Python renderer is planned for v0.1.1 to eliminate this).
+
+If a future architecture can solve both subagent interactivity and tool-use discipline simultaneously, the coordinator-subagent pattern is still the right answer — it's recorded in the v0.2.0 roadmap.
+
+**Per-stage cost contribution** (typical run):
+- **Orchestrator** (your session model): the dominant variable — Haiku ~$0.80, Sonnet ~$2.50, Opus ~$5
+- Profiler (Sonnet 4.6): ~$0.40 — project read + interview + casting
+- Stage 1 Haiku peers: ~$0.10
+- Stage 1+2 Sonnet reviewers: ~$1–$1.50
+- Stage 3 Opus leadership + Aggregator: ~$1.50–$2 — strategic synthesis (the unavoidable Opus floor)
+
+The subagent shares are roughly constant across orchestrator models; the orchestrator share is what scales with your session's tier.
+
+### Variance sources (unchanged from v0.1.0-beta)
+
+- **Within-fixture verbosity variance is the dominant noise source.** One of the three Next.js beta runs wrote a ~30% chattier report — same cast, same scope, ~$1.50 over the others.
+- **Cross-project variance is small for similar-sized fixtures.** ML pipelines cast 8 personas (Profiler skips Frontend, Database, Network, Privacy); web/API projects cast 10. Composition shifts substantially per project type.
+- **Larger projects will cost more.** Every new file adds to the cache footprint dispatched into each Stage 1/2 persona's prompt. Projects with more files, more languages, or stricter aims will pull a wider cast and bigger payloads. Larger-project cost data (codebases beyond 5–7 files) lands in v0.1.1.
+
+### Plan compatibility
+
+Crucible runs comfortably on **Claude Max** (~5–10 full-project reviews per 5-hour quota window depending on session model) and on **Claude Pro** with one caveat: Pro caps Opus access. The Stage 3 leadership + Aggregator work that requires Opus (~$1.50–$2 of every run) still hits the Pro Opus cap. Heavy Pro users should scope reviews tighter — a phase review casts ~5 personas vs. ~8–10 for a full-project review, with proportional cost reduction.
+
+### Future cost work (v0.2.0+)
+
+The fundamental cost coupling — orchestrator model dominates total cost — is structural to how Skills run today. Two paths could decouple it:
+
+1. **Coordinator subagent with both tool-use discipline AND interactive-passthrough** — see the architectural finding above. The v0.1.0 attempt failed on interactive-passthrough (nested subagents lose user prompts); if Claude Code adds first-class user-prompt forwarding for nested subagents, this becomes the right architecture.
+2. **Profiler runs in main thread, post-Profiler runs in subagent** — split the pipeline at the Profiler boundary. Main thread handles the interactive interview; coordinator subagent handles the bookkeeping-heavy Stage 1–4 dispatch + render. Would require splitting the SKILL into two halves. Worth measuring.
+
+Until one of those is verified end-to-end, the cost-preview prompt is the v0.1.0 mitigation: explicit, honest, one-prompt friction.
 
 ---
 
@@ -329,6 +381,11 @@ Override behavior is deferred to v0.2.0; v0.1.0 reads the file but does not yet 
 - `/crucible:run`, `/crucible:aims`, `/crucible:history`
 - Three demo example reports
 - Schema + structural validation tests
+- Self-hosted marketplace install (`/plugin marketplace add hazarsozer/crucible-cc` + `/plugin install crucible@crucible`)
+
+### v0.1.1 (incremental)
+- Deterministic Python renderer for the final markdown report (replaces LLM-driven template substitution — eliminates the template-improvisation regression measured in v0.1.0 Sonnet-main runs).
+- Stronger per-persona examples for common Code Citation Discipline slip sites (PyTorch eval-mode method, standard binary-serializer module name, Node shell-out helpers) to lower the prose discipline slip rate below the measured 25%.
 
 ### v0.2.0 (next)
 - Persona prompt polish (each persona's quality-review backlog)
