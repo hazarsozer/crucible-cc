@@ -1,5 +1,7 @@
 # Crucible
 
+[![Listed on ClaudePluginHub](https://www.claudepluginhub.com/badge/hazarsozer-crucible)](https://www.claudepluginhub.com/plugins/hazarsozer-crucible?ref=badge)
+
 > **Not Another Code Reviewer.**
 
 A Claude Code plugin that runs your code through a corporate review pipeline. A **Profiler** reads your project, interviews you about the phase, and casts a 4–8 persona review committee from a 23-persona library. **Peers** review at the code level, **departments** hunt for gaps, and **leadership** grades alignment to your stated aims. An **Aggregator** synthesizes the holistic verdict — no math, no averaging, just Opus reasoning over the committee's reports.
