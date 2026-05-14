@@ -40,6 +40,16 @@ cd your-project
 ```
 
 <details>
+<summary><em>Alternative: ClaudePluginHub Quick Install</em></summary>
+
+```bash
+npx claudepluginhub hazarsozer/crucible-cc --plugin crucible
+```
+
+A single line of code provided by Claude Plugin Hub.
+</details>
+
+<details>
 <summary><em>Alternative: clone the repo and load it directly (no install step)</em></summary>
 
 ```bash
