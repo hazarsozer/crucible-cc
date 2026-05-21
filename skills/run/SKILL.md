@@ -11,13 +11,17 @@ The pipeline has five stages: Profiler (Stage 0) → Peer Code Review (Stage 1) 
 
 ## Cost preview (mandatory first step)
 
-Before doing anything else — before running `pwd`, before reading files — print the cost preview by running this Bash command:
+Before doing anything else — before running `pwd`, before reading files:
+
+1. **Output a one-line assistant-text hint** so the user knows what's about to appear. Suggested phrasing: *"Cost preview below — press Ctrl+O to expand if Claude Code shows it as a collapsed Bash pill."* You may rephrase, but the semantic content (preview is below, Ctrl+O to expand if collapsed) must be preserved. This is purely a visibility hint; the numeric content lives in the file printed by step 2.
+
+2. **Print the cost preview** by running this Bash command:
 
 ```bash
 cat "${CLAUDE_PLUGIN_ROOT}/templates/cost-preview.txt"
 ```
 
-**Do not paraphrase, summarize, or modify the numbers** — the preview text is checked into the plugin verbatim and printed verbatim. Earlier versions of this SKILL inlined the preview as a fenced code block and instructed you to "print the following preview"; the orchestrator LLM treated that as "express the substance" rather than "literally output these exact characters" and lowered the per-tier cost floors by $3-5 across the board (e.g., `$4.50-7` was rendered as `$0.50-7`). Externalizing the preview to a file and `cat`-ing it via Bash is the deterministic fix — same architectural pattern as the v0.1.1 report renderer.
+**Do not paraphrase, summarize, or modify the numbers** — the preview text is checked into the plugin verbatim and printed verbatim. Earlier versions of this SKILL inlined the preview as a fenced code block and instructed you to "print the following preview"; the orchestrator LLM treated that as "express the substance" rather than "literally output these exact characters" and lowered the per-tier cost floors by $3-5 across the board (e.g., `$4.50-7` was rendered as `$0.50-7`). Externalizing the preview to a file and `cat`-ing it via Bash is the deterministic fix — same architectural pattern as the v0.1.1 report renderer. The step-1 hint exists because Claude Code collapses Bash tool stdout into a pill by default; without the hint, users hit the cost-preview output only after pressing Ctrl+O (wet-test feedback from the 2026-05-22 Omnivore dogfood). Paraphrase risk is bounded for the hint itself because it's semantic, not numeric — unlike the cost numbers, the meaning survives minor rewording.
 
 Then wait for the user's confirmation. If the user answers anything other than `y` or `yes`, halt and print: `Run cancelled. No artifacts written.`
 

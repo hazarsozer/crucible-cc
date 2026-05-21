@@ -2,6 +2,12 @@
 
 All notable changes to Crucible are documented here.
 
+## [Unreleased]
+
+### Changed
+
+- **`skills/run/SKILL.md` cost-preview step now emits a visibility hint before the `cat` invocation.** Claude Code collapses Bash tool stdout into a pill by default, so v0.1.1's externalized preview was correct but invisible to users who hadn't toggled verbose mode — they had to press Ctrl+O to see it. Wet-test feedback from the 2026-05-22 Omnivore dogfood confirmed the UX gap. The orchestrator now outputs a one-line assistant-text hint before `cat`: *"Cost preview below — press Ctrl+O to expand if Claude Code shows it as a collapsed Bash pill."* Paraphrase risk on the hint is acceptable because it's semantic-preserving; the cost numbers themselves remain in the `cat`'d file untouched. Queued for the next release; no version bump on its own.
+
 ## [0.1.1] — 2026-05-21
 
 Polish release. Three changes, all correctness-focused. No new features.
