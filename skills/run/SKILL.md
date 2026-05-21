@@ -11,45 +11,15 @@ The pipeline has five stages: Profiler (Stage 0) → Peer Code Review (Stage 1) 
 
 ## Cost preview (mandatory first step)
 
-Before doing anything else — before running `pwd`, before reading files — print the following preview and wait for the user's confirmation:
+Before doing anything else — before running `pwd`, before reading files — print the cost preview by running this Bash command:
 
-```
-🔥 Crucible — Corporate Review Pipeline
-
-⚠️  Usage note: Crucible runs in your Claude Code main thread, so YOUR session
-    model drives most of the cost. If you're on a Claude Pro or Max subscription
-    you don't pay per run — your subscription covers usage; you just consume
-    more or less of your quota. The dollar figures below are API-equivalent
-    token costs (what pay-as-you-go would charge), shown as a reference for
-    relative effort. The percentages are share of a Claude Max 5-hour quota
-    window; Pro subscribers will see proportionally more of their smaller
-    window consumed by the same workload.
-
-    Measured ranges (5–7 file fixtures):
-
-      • Haiku 4.5   — API ~$3-4 per run, ~6-7% of a Claude Max quota window
-                      (cheapest; report template adherence is looser — section
-                       names may improvise and detail may collapse; single run
-                       consumes ~75% of Haiku's 200K context window, so start a
-                       fresh session if you've been using Claude Code already)
-
-      • Sonnet 4.6  — API ~$4.50-7 per run, ~10-15% of a Claude Max window
-                      (recommended balance of cost + polished report)
-
-      • Opus 4.7    — API ~$8-10 per run, ~15%+ of a Claude Max window
-                      (deepest main-thread reasoning, but most reasoning happens
-                       in dispatched Opus subagents anyway — Sonnet usually fine)
-
-    Larger projects cost more in proportion to file count and cast size.
-
-    Crucible cannot detect your session model from inside a Skill. If you
-    want to manage quota usage, run `/model claude-haiku-4-5-20251001` or
-    `/model claude-sonnet-4-6` in this session BEFORE proceeding.
-
-Proceed? (y / n)
+```bash
+cat "${CLAUDE_PLUGIN_ROOT}/templates/cost-preview.txt"
 ```
 
-If the user answers anything other than `y` or `yes`, halt and print: `Run cancelled. No artifacts written.`
+**Do not paraphrase, summarize, or modify the numbers** — the preview text is checked into the plugin verbatim and printed verbatim. Earlier versions of this SKILL inlined the preview as a fenced code block and instructed you to "print the following preview"; the orchestrator LLM treated that as "express the substance" rather than "literally output these exact characters" and lowered the per-tier cost floors by $3-5 across the board (e.g., `$4.50-7` was rendered as `$0.50-7`). Externalizing the preview to a file and `cat`-ing it via Bash is the deterministic fix — same architectural pattern as the v0.1.1 report renderer.
+
+Then wait for the user's confirmation. If the user answers anything other than `y` or `yes`, halt and print: `Run cancelled. No artifacts written.`
 
 If the user answers `y` or `yes`, proceed to Setup. Do NOT print the cost preview again on subsequent steps of the same run.
 

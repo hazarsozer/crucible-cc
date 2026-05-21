@@ -405,6 +405,7 @@ Override behavior is deferred to v0.2.0; v0.1.0 reads the file but does not yet 
 - Vendored Jinja2 (BSD-3) + MarkupSafe at `scripts/_vendor/` — no `pip install` or `uv add` required on the user's project; Python 3.8+ is the only runtime dependency.
 - Per-persona "WRITE THIS, NOT THAT" examples added to `peer-python-reviewer`, `team-data-ml-reviewer`, and `lead-project-manager` to drop the ~25% lane-discipline slip rate measured on a v0.1.0 verification run.
 - Aggregator-summary drift recovered at render time: when `stage_reports.stage_<N>` is stripped to `{persona, score, verdict}` summaries, the renderer re-hydrates from the sibling `stage_<N>/*.json` files written by per-persona dispatches.
+- Cost preview externalized to `templates/cost-preview.txt`. The `/crucible:run` cost preview is now `cat`-ed from a file instead of inlined in SKILL.md and printed by the LLM — eliminates the floor-lowering drift observed during the v0.1.1 wet test (Sonnet was rendering `$4.50-7` as `$0.50-7`).
 
 ### v0.2.0 (next)
 - Persona prompt polish (each persona's quality-review backlog)
