@@ -1,0 +1,54 @@
+{
+  "persona": "team-data-ml-reviewer",
+  "stage": 2,
+  "model_used": "claude-sonnet-4-6",
+  "started_at": "2026-05-21T02:38:50Z",
+  "completed_at": "2026-05-21T02:39:40Z",
+  "scope_assessed": ["src/data.py", "src/model.py", "src/train.py", "tests/test_train.py", "configs/default.yaml"],
+  "verdict": "block",
+  "score": 3,
+  "summary_quote": "Project aims commit to reproducibility and no-leakage splits; code falsifies both. No train/val/test split (every metric is leakage by construction), no seeds anywhere (runs are not comparable). Neither success criterion can be evaluated from the runs this code produces.",
+  "findings": [
+    {
+      "severity": "high",
+      "category": "data-leakage",
+      "title": "load_full_dataset returns the entire dataset with no train/val/test split; every reported metric is leakage by construction",
+      "evidence": {"path": "src/data.py", "line_start": 36, "line_end": 46},
+      "explanation": "load_full_dataset() returns the complete TabularDataset with no partitioning. The training loop in src/train.py consumes this single dataset for fitting; any evaluation performed against the same object would be evaluating on training data — pure leakage, not generalization. The project aims explicitly commit to 'Train / val / test split exists and there is no leakage'. The code falsifies the commitment by construction: there is no split anywhere in the pipeline.",
+      "suggestion": "Replace load_full_dataset with a split-aware loader. Deterministically partition using sklearn.model_selection.train_test_split with test_size=0.2, val_size=0.1 of the remainder, random_state=cfg['seed'], stratify=self.y. Return three TabularDataset objects (train, val, test). Update train.py to build three DataLoaders, use train_loader for fitting, val_loader for per-epoch evaluation, and test_loader for the single end-of-run accuracy metric."
+    },
+    {
+      "severity": "high",
+      "category": "reproducibility",
+      "title": "No random seed set anywhere; two runs with the same config produce different metrics, falsifying the stated reproducibility aim",
+      "evidence": {"path": "src/train.py", "line_start": 33},
+      "explanation": "The training entrypoint sets no seed for Python's random, NumPy, PyTorch CPU, or CUDA. Three separate non-deterministic sources exist: (1) src/data.py:20-21 calls np.random.randn and np.random.randint with no fixed seed; (2) DataLoader with shuffle=True and no generator argument; (3) nn.Linear weight initialization is unseeded. The project aims explicitly commit to 'Training is reproducible — two runs with the same config produce identical loss curves'. The code falsifies this commitment on all three dimensions.",
+      "suggestion": "Add a set_seed helper at the top of train.py: import random; def set_seed(seed: int) -> None: random.seed(seed); np.random.seed(seed); torch.manual_seed(seed); torch.cuda.manual_seed_all(seed); torch.backends.cudnn.deterministic = True; torch.use_deterministic_algorithms(True, warn_only=True). Add seed: 42 to configs/default.yaml and call set_seed(cfg['seed']) before any data or model construction. For DataLoader shuffle reproducibility also pass generator=torch.Generator().manual_seed(cfg['seed']) to the DataLoader constructor."
+    },
+    {
+      "severity": "medium",
+      "category": "training-visibility",
+      "title": "Only training loss is recorded per epoch; no val loss, so overfitting is invisible and no checkpoint selection policy is possible",
+      "evidence": {"path": "src/train.py", "line_start": 57, "line_end": 65},
+      "explanation": "The training loop accumulates running_loss over the train loader and prints it once per epoch. Val loss is never computed. With epochs: 20 configured and no early stopping, the model can overfit and there is no signal to detect it. The project aims state 'Metrics are logged per epoch' — the intent almost certainly includes val metrics since a train-loss-only curve cannot satisfy the reproducibility aim's implicit requirement that curves be meaningful.",
+      "suggestion": "After adding the train/val/test split, compute val loss and val accuracy at the end of each epoch using the model in inference mode over val_loader. Log both train_loss and val_loss per epoch. Add a best-checkpoint save: track best_val_loss, save model state_dict when it improves, and add early stopping with a patience window."
+    },
+    {
+      "severity": "medium",
+      "category": "experiment-tracking",
+      "title": "No experiment tracking integration; metrics exist only in terminal scrollback with no machine-readable record",
+      "evidence": {"path": "src/train.py", "line_start": 33, "line_end": 68},
+      "explanation": "The training script writes nothing to any tracking system. Even if the print() calls were replaced with proper logging calls, there is no persistent machine-readable record of the run. Future runs cannot be compared because there is no answer to 'which config and seed produced that val loss from last week.' For a project explicitly iterating on architecture and hyperparameters, this makes run comparison impossible.",
+      "suggestion": "Add MLflow integration: import mlflow; wrap train() body in with mlflow.start_run():; call mlflow.log_params(cfg) at the start; call mlflow.log_metrics({'train_loss': avg, 'val_loss': val_avg}, step=epoch) inside the epoch loop. Use mlflow.set_tracking_uri('file:./mlruns') for the local file backend — no infrastructure needed beyond the package."
+    },
+    {
+      "severity": "low",
+      "category": "inference-hygiene",
+      "title": "predict() uses deprecated @torch.no_grad() decorator and model.train(False) instead of the canonical inference-mode pattern",
+      "evidence": {"path": "src/model.py", "line_start": 23, "line_end": 29},
+      "explanation": "model.train(False) is the less readable path to inference mode — model.eval() is the canonical PyTorch idiom. torch.inference_mode() disables autograd version tracking as well as gradient computation, making it strictly faster for inference-only paths. The function accepts x: torch.Tensor and immediately runs model(x) with no shape check.",
+      "suggestion": "Replace the @torch.no_grad() decorator with a with torch.inference_mode(): context manager inside the function body. Replace model.train(False) with model.eval(). Optionally add a shape assertion at entry: assert x.ndim == 2 and x.shape[1] == model.net[0].in_features."
+    }
+  ],
+  "stage_handoff_notes": "The no-seed gap and the no-split gap together mean the project's two primary success criteria ('reproducible runs' and 'no leakage') are both falsified by the current code; this justifies block rather than concerns. Performance concerns (DataLoader num_workers=0, optimizer.zero_grad() without set_to_none=True) belong to team-performance-reviewer. Once the split and seed land, a baseline accuracy figure should be established (random-class prior is 10% for 10 balanced classes on synthetic data)."
+}

@@ -1,0 +1,38 @@
+{
+  "persona": "team-performance-reviewer",
+  "stage": 2,
+  "model_used": "claude-sonnet-4-6",
+  "started_at": "2026-05-21T02:38:50Z",
+  "completed_at": "2026-05-21T02:39:50Z",
+  "scope_assessed": ["src/data.py", "src/model.py", "src/train.py", "configs/default.yaml"],
+  "verdict": "concerns",
+  "score": 5,
+  "summary_quote": "DataLoader num_workers=0 pins CPU-bound data loading to the main thread, leaving the GPU idle between batches — this is the primary throughput bottleneck on a 30-minute budget. The data is regenerated from scratch on every run rather than pinned to memory once. These two issues dominate wall-clock time for this pipeline.",
+  "findings": [
+    {
+      "severity": "high",
+      "category": "synchronous-io-on-hot-path",
+      "title": "DataLoader num_workers=0 serialises data loading with forward pass, leaving GPU idle between batches",
+      "evidence": {"path": "src/train.py", "line_start": 51, "line_end": 51},
+      "explanation": "With num_workers=0, each training step runs sequentially — GPU executes forward/backward, then waits for CPU to prepare the next batch, then GPU runs again. At batch_size=64 over 10k samples (157 batches/epoch, 20 epochs = 3,140 steps), even a modest 5ms per-batch CPU prep time adds ~16s of pure CPU-wait; with numpy array copies and torch.from_numpy calls in the hot path, real overhead is higher. The RTX 4070 Super's throughput is being squandered by single-threaded data staging. Setting num_workers >= 2 enables the DataLoader to prefetch the next batch while the GPU processes the current one, overlapping compute and data loading entirely. pin_memory=True further accelerates host-to-device transfer by staging tensors in pinned memory.",
+      "suggestion": "Change the DataLoader construction to: DataLoader(dataset, batch_size=cfg['batch_size'], shuffle=True, num_workers=4, pin_memory=True). On a Ryzen 7700 with an RTX 4070 Super, num_workers=4 is a reasonable starting point; tune up to 8 if CPU headroom exists. Add persistent_workers=True if epoch count is high to avoid per-epoch worker respawn overhead."
+    },
+    {
+      "severity": "medium",
+      "category": "missing-cache",
+      "title": "TabularDataset regenerates synthetic data on every instantiation rather than pinning the array once",
+      "evidence": {"path": "src/data.py", "line_start": 19, "line_end": 20},
+      "explanation": "np.random.randn(10_000, 32) allocates ~2.5 MB and np.random.randint allocates ~80 KB on each call to load_full_dataset(). This is cheap in absolute terms but the capacity issue and the reproducibility issue have the same root: the data is never materialised to a stable artifact. Without a seed, load_full_dataset() silently produces a different dataset on every call, so any timing comparison between runs measures noise as much as architecture differences.",
+      "suggestion": "Set np.random.seed (or use a numpy Generator seeded from cfg) before the randn/randint calls inside TabularDataset.__init__. For the split pattern, materialise once and slice: call load_full_dataset() a single time, then use torch.utils.data.random_split with a seeded Generator from config. If data volume grows, consider np.save / np.load to cache the generated arrays to disk."
+    },
+    {
+      "severity": "low",
+      "category": "gc-pressure",
+      "title": "optimizer.zero_grad() without set_to_none=True allocates zero-filled gradient tensors each step",
+      "evidence": {"path": "src/train.py", "line_start": 56, "line_end": 56},
+      "explanation": "With set_to_none=False (the default), zero_grad() fills each gradient tensor with zeros — one write per parameter per step. For this MLP (~20,874 parameters) at 3,140 steps over 20 epochs, that is ~65M float writes just to zero gradients that will be immediately overwritten by loss.backward(). set_to_none=True replaces each gradient tensor with None instead of zeroing it, so loss.backward() allocates fresh gradients only for parameters that received gradient signal. The saving is modest for this MLP size (~1-2% wall-clock) but scales with parameter count and is a zero-risk change.",
+      "suggestion": "Change optimizer.zero_grad() to optimizer.zero_grad(set_to_none=True). This is now the PyTorch-recommended default since PyTorch 1.7."
+    }
+  ],
+  "stage_handoff_notes": "The seed fix and the DataLoader num_workers fix should land together to make the 30-minute cap meaningful as a benchmark. Once num_workers and pin_memory are set, the next profiling target is the model.to(device) placement — the current train.py never moves the model or tensors to CUDA, so the RTX 4070 Super is completely unused as written. That sits at the boundary of correctness and performance; flagging here in notes since it was not in scope files' explicit code paths."
+}

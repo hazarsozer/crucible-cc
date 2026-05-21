@@ -1,0 +1,70 @@
+{
+  "persona": "peer-python-reviewer",
+  "stage": 1,
+  "model_used": "claude-haiku-4-5-20251001",
+  "started_at": "2026-05-21T02:35:41Z",
+  "completed_at": "2026-05-21T02:38:00Z",
+  "scope_assessed": ["src/data.py", "src/model.py", "src/train.py", "tests/test_train.py"],
+  "verdict": "concerns",
+  "score": 6,
+  "summary_quote": "Reusable train() function uses print() for epoch metrics instead of logging; missing type hints on load_config return; bare print() inside library functions will spam caller logs when this trainer is imported by other tools.",
+  "findings": [
+    {
+      "severity": "medium",
+      "category": "logging",
+      "title": "Use logging instead of print() for epoch metrics in reusable training function",
+      "evidence": {
+        "path": "src/train.py",
+        "line_start": 61,
+        "line_end": 62
+      },
+      "explanation": "The train() function emits per-epoch loss and completion messages via print(). This is a reusable function intended to be called from external scripts, notebooks, or tuning harnesses. print() writes to stdout with no level, timestamp, or logger name, and has no way for callers to silence or capture output. Once this trainer is imported (e.g., by a hyperparameter search agent or integration test), the print statements become inescapable noise in the calling process's stdout.",
+      "suggestion": "Add logger = logging.getLogger(__name__) at module top, then replace print(f\"epoch {epoch + 1}/{cfg['epochs']}: loss={avg:.4f}\") on line 61 with logger.info(). Configure logging (via basicConfig) in the __main__ block so callers control the output level, not the library."
+    },
+    {
+      "severity": "medium",
+      "category": "type-hints",
+      "title": "Missing return type annotation on load_config function",
+      "evidence": {
+        "path": "src/train.py",
+        "line_start": 20
+      },
+      "explanation": "The function load_config(path: Path) -> dict: passes a raw dict to downstream code (make_model, DataLoader) via the cfg parameter. The dict has no structure annotation — cfg is treated as a bag of keys with no schema. This makes it impossible for type checkers or callers to know what keys are required or what types the values have.",
+      "suggestion": "Define a ConfigDict TypedDict at module top: class ConfigDict(TypedDict): input_dim: int; hidden_dim: int; output_dim: int; batch_size: int; epochs: int; learning_rate: float. Then annotate load_config(path: Path) -> ConfigDict."
+    },
+    {
+      "severity": "medium",
+      "category": "code-smell",
+      "title": "Bare function predict() outside class should be moved inside MLP",
+      "evidence": {
+        "path": "src/model.py",
+        "line_start": 21
+      },
+      "explanation": "The predict() function is a module-level function that takes a model as a parameter and applies torch.no_grad(). It separates the inference logic from the model definition. Instance method would be more cohesive and align with how PyTorch models are typically used (model.predict(x) vs predict(model, x)).",
+      "suggestion": "Move predict() into the MLP class as an instance method: def predict(self, x: torch.Tensor) -> torch.Tensor: with torch.inference_mode() inside. This keeps inference logic co-located with the model."
+    },
+    {
+      "severity": "low",
+      "category": "idiom",
+      "title": "Use model.eval() instead of model.train(False) for semantic clarity",
+      "evidence": {
+        "path": "src/model.py",
+        "line_start": 26
+      },
+      "explanation": "Line 26 uses model.train(False) to disable training mode. PyTorch idiom favors model.eval() because it is explicit and concise. train(False) is a negation and requires a double-negative read.",
+      "suggestion": "Replace model.train(False) with model.eval() on line 26."
+    },
+    {
+      "severity": "low",
+      "category": "idiom",
+      "title": "Validate config path at function entry for clearer error messages",
+      "evidence": {
+        "path": "src/train.py",
+        "line_start": 43
+      },
+      "explanation": "The train() function accepts cfg_path as a string and passes it directly to Path(cfg_path). If the file does not exist, read_text() will raise FileNotFoundError with no context about what config was expected.",
+      "suggestion": "Validate the path exists at function entry: if not Path(cfg_path).exists(): raise FileNotFoundError(f'Config file not found: {cfg_path}')."
+    }
+  ],
+  "stage_handoff_notes": "File is otherwise idiomatic for the Python lens: type hints present on function parameters, f-strings used throughout, pathlib.Path used for file I/O, no mutable default arguments, no wildcard imports, no bare except blocks. Out-of-scope concerns (missing random seed for reproducibility, DataLoader num_workers absent, optimizer.zero_grad() without set_to_none, no train/val/test split, minimal test coverage) belong to team-data-ml-reviewer and peer-quality-engineer."
+}
