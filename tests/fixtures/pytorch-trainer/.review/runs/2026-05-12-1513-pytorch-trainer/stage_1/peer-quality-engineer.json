@@ -1,0 +1,62 @@
+{
+  "persona": "peer-quality-engineer",
+  "stage": 1,
+  "model_used": "claude-sonnet-4-6",
+  "started_at": "2026-05-12T10:00:00Z",
+  "completed_at": "2026-05-12T10:00:18Z",
+  "scope_assessed": ["src/train.py", "src/model.py", "src/data.py", "tests/test_train.py"],
+  "verdict": "block",
+  "score": 2,
+  "summary_quote": "The test suite contains exactly one assertion — that MLP can be instantiated — leaving the training loop, data pipeline, reproducibility contract, and all success criteria completely untested. The aims state reproducibility and split integrity as the core goals; neither has a single test.",
+  "findings": [
+    {
+      "severity": "critical",
+      "category": "missing-tests-for-stated-success-criteria",
+      "title": "Reproducibility is the primary success criterion and has zero test coverage; no test verifies two identical runs produce the same loss curve",
+      "evidence": { "path": "src/train.py", "line_start": 1, "line_end": 58, "symbol_name": "train" },
+      "explanation": "The aims snapshot lists reproducible training runs as the top success criterion. The production code has no seed-setting at all (no torch.manual_seed, no numpy seed, no Python random seed), and there is no test anywhere that runs training twice with a fixed config and asserts identical outputs. The gap between the stated goal and the test surface is complete — the criterion cannot be verified at all from the current suite.",
+      "suggestion": "Add a test that calls train() twice with the same config (using a tmp config fixture) after setting torch.manual_seed and numpy.random.seed to a fixed value, then asserts that the logged loss sequences are identical. This test will fail on the current code because no seed is set in train(); fixing the production code and making the test pass is the correct resolution path."
+    },
+    {
+      "severity": "critical",
+      "category": "missing-tests-for-stated-success-criteria",
+      "title": "Train/val/test split is a stated success criterion; load_full_dataset returns no split and there is no test asserting split existence or zero leakage",
+      "evidence": { "path": "src/data.py", "line_start": 29, "line_end": 32, "symbol_name": "load_full_dataset" },
+      "explanation": "The aims state that a train/val/test split must exist and there must be no data leakage. The production function is explicitly annotated as returning the entire dataset with no split. There is no test that calls any split function, checks that the three subsets are disjoint, or verifies that indices do not overlap. The leakage-prevention criterion is completely unverifiable from the test suite.",
+      "suggestion": "Introduce a split function in data.py (e.g. split_dataset returning train/val/test subsets) and add a test that: (1) asserts the three sets are disjoint by checking index overlap is empty, (2) asserts they sum to the full dataset length, and (3) checks that the split is deterministic given a fixed seed."
+    },
+    {
+      "severity": "high",
+      "category": "missing-tests-for-core-pipeline",
+      "title": "The training loop has no test of any kind; epoch loss logging, optimizer step, and forward pass are all untested code paths",
+      "evidence": { "path": "src/train.py", "line_start": 27, "line_end": 54, "symbol_name": "train" },
+      "explanation": "The entire body of train() — DataLoader construction, the epoch loop, optimizer.zero_grad, loss.backward, optimizer.step, and the per-epoch print — is exercised by no test. A silent regression anywhere in this loop would produce no test failure. The one existing test only instantiates MLP; it never calls train().",
+      "suggestion": "Add a fast smoke test that calls train() with a minimal config (1 epoch, small batch, small dataset) using a temporary config file and asserts that: (1) it completes without raising, (2) the returned or printed loss is a finite float, and (3) the model parameters differ before and after (confirming at least one gradient step occurred)."
+    },
+    {
+      "severity": "high",
+      "category": "missing-tests-for-stated-success-criteria",
+      "title": "Per-epoch metric logging and final test-set accuracy are stated success criteria with no corresponding assertion in the suite",
+      "evidence": { "path": "src/train.py", "line_start": 47, "line_end": 50, "symbol_name": "train" },
+      "explanation": "The aims list 'metrics logged per epoch' and 'a test set evaluation produces a single accuracy number' as explicit success criteria. The current train() only prints average loss and has no test-set evaluation at all. There is no test asserting that a loss value is emitted each epoch or that a final accuracy number is produced. Both criteria are unmet in production code and untested.",
+      "suggestion": "Refactor train() to return a dict containing the per-epoch loss list and final test accuracy (or accept a metrics callback). Add a test that runs one epoch and asserts the returned metrics dict has the expected keys with finite numeric values."
+    },
+    {
+      "severity": "medium",
+      "category": "weak-assertions",
+      "title": "The only existing test asserts result is not None rather than verifying any behavioral contract of MLP",
+      "evidence": { "path": "tests/test_train.py", "line_start": 6, "line_end": 8, "symbol_name": "test_model_constructs" },
+      "explanation": "The assertion 'assert m is not None' is trivially true for any successful constructor call and would pass even if the model's forward pass were broken, the layer dimensions were wrong, or the net attribute was missing entirely.",
+      "suggestion": "Replace the not-None check with assertions on observable behavior: pass a correctly shaped input tensor through the model and assert the output tensor shape equals (batch_size, output_dim). Also assert the number of trainable parameters is nonzero."
+    },
+    {
+      "severity": "medium",
+      "category": "missing-tests-for-flakiness-vector",
+      "title": "TabularDataset uses unseeded numpy random calls at construction time, making every test that touches data non-deterministic",
+      "evidence": { "path": "src/data.py", "line_start": 18, "line_end": 19, "symbol_name": "TabularDataset" },
+      "explanation": "TabularDataset generates its data with np.random.randn and np.random.randint at construction time with no seed parameter. Any test that constructs a dataset will get different data on every run, making tests that assert on specific values, loss bounds, or accuracy thresholds inherently flaky.",
+      "suggestion": "Add an optional seed parameter to TabularDataset.__init__ and pass it to a local numpy RNG (np.random.default_rng) rather than the global state. Tests should construct datasets with a fixed seed."
+    }
+  ],
+  "stage_handoff_notes": "The missing random seed in train() is a Python/production-code correctness issue that peer-python-reviewer should flag independently; I have flagged only the absence of the test. The data split gap means load_full_dataset is annotated as intentionally broken — downstream personas reviewing data.py for correctness should note the annotation. The unseeded global numpy state in TabularDataset also has a thread-safety implication if tests ever run in parallel. No integration test currently exercises the route from data loading through model training to metric emission; findings 1, 2, and 3 together constitute the minimum test surface needed before the aims criteria can be called met."
+}

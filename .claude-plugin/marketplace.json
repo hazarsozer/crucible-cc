@@ -13,7 +13,7 @@
       "name": "crucible",
       "source": "./",
       "description": "Run a project through a 5-stage corporate review pipeline. The Profiler reads the project, interviews you for aims, and casts a 4–8 persona review committee from a 23-persona library. Peers review at the code level, departments hunt for gaps, leadership grades aim alignment, and the Aggregator synthesizes a final score and verdict.",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "author": {
         "name": "Hazar Sozer",
         "email": "hsozer00@gmail.com"

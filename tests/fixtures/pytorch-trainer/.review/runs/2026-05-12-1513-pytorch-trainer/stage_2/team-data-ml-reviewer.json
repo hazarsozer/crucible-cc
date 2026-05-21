@@ -1,0 +1,46 @@
+{
+  "persona": "team-data-ml-reviewer",
+  "stage": 2,
+  "model_used": "claude-sonnet-4-6",
+  "started_at": "2026-05-12T00:00:00Z",
+  "completed_at": "2026-05-12T00:00:18Z",
+  "scope_assessed": ["src/train.py", "src/model.py", "src/data.py"],
+  "verdict": "block",
+  "score": 3,
+  "summary_quote": "Project aims commit to reproducibility and no-leakage splits; code falsifies both. No train/val/test split (every metric is leakage), no seeds anywhere (runs are not comparable), and no val loss logged. No metric this script produces can be trusted.",
+  "findings": [
+    {
+      "severity": "high",
+      "category": "data-leakage",
+      "title": "load_full_dataset returns the entire dataset with no train/val/test split; every reported metric is leakage by construction",
+      "evidence": {"path": "src/data.py", "line_start": 29, "line_end": 36},
+      "explanation": "load_full_dataset() returns a single TabularDataset containing all 10,000 samples with no split. The training loop in train.py feeds this entire dataset to the optimizer, and any evaluation against the same dataset would be evaluating the model on data it was trained on — pure in-sample fit, not generalization. The project aims explicitly commit to 'Train / val / test split exists and there is no leakage'; the code falsifies this commitment by construction. Until a split exists, no accuracy number this script produces can be interpreted as a generalization estimate.",
+      "suggestion": "Replace load_full_dataset() with a function that returns three separate TabularDataset objects. Construct the full arrays, then split deterministically using train_test_split with stratify=y and a fixed random_state. Wrap each pair in TabularDataset and return (train_ds, val_ds, test_ds). Update train.py to consume train_loader for fitting, val_loader for per-epoch validation, and test_loader for the single end-of-run evaluation."
+    },
+    {
+      "severity": "high",
+      "category": "reproducibility",
+      "title": "No random seed set anywhere; two runs with identical config produce different metrics",
+      "evidence": {"path": "src/train.py", "line_start": 33, "line_end": 37},
+      "explanation": "The training script sets no seed for Python's random, NumPy, PyTorch, or CUDA. Three separate RNG sources are unseeded: (1) TabularDataset.__init__ in src/data.py calls np.random.randn and np.random.randint without seeding — the synthetic data changes on every instantiation; (2) DataLoader shuffle=True uses a fresh PyTorch RNG state each run, giving different batch orderings; (3) nn.Linear weight initialisation uses PyTorch's default RNG, producing different starting weights each run. The project aims explicitly commit to 'two runs with the same config produce identical loss curves' — the code falsifies this.",
+      "suggestion": "Add a set_seed helper at the top of train.py and call it once before any data or model construction, reading the seed value from cfg: `import random, numpy as np, torch; def set_seed(s): random.seed(s); np.random.seed(s); torch.manual_seed(s); torch.cuda.manual_seed_all(s); torch.backends.cudnn.deterministic = True; torch.use_deterministic_algorithms(True, warn_only=True)`. Add seed: 42 to configs/default.yaml. For DataLoader determinism, pass a seeded generator. The TabularDataset must also receive and apply the seed before generating its arrays."
+    },
+    {
+      "severity": "high",
+      "category": "training-visibility",
+      "title": "No validation loss computed or logged per epoch; overfitting is invisible and the metric logging success criterion is unmet",
+      "evidence": {"path": "src/train.py", "line_start": 55, "line_end": 66},
+      "explanation": "The training loop records only running training loss. There is no val_loader pass, no val_loss computation, and no per-epoch accuracy on any held-out set. Three consequences: (1) the project aim 'Metrics are logged per epoch' is satisfied only for training loss — val metrics are absent; (2) with epochs: 20 in the config, the model can overfit silently; (3) checkpoint selection based on the best epoch is impossible without val loss.",
+      "suggestion": "Once the train/val/test split exists, add a validation pass at the end of each epoch. Log both train_loss and val_loss per epoch. Add early stopping: track best_val_loss, save the model state when it improves, and break after patience=5 epochs without improvement. Run the test_loader pass exactly once after training completes to produce the final accuracy number the aims require."
+    },
+    {
+      "severity": "medium",
+      "category": "experiment-tracking",
+      "title": "No experiment tracking integration; metrics exist only in terminal scrollback and no run record persists",
+      "evidence": {"path": "src/train.py", "line_start": 33, "line_end": 72},
+      "explanation": "The training script has no integration with any experiment tracker. All metrics are emitted via print(); no machine-readable record of any run persists after the terminal closes. Comparing two runs to verify reproducibility — an explicit aim — is impossible without stored per-epoch metrics to diff. For a project whose stated goal is 'reliable enough to compare runs', this is a real gap.",
+      "suggestion": "Add MLflow with the local file backend. Wrap train() body in `with mlflow.start_run():`; log cfg once via mlflow.log_params(cfg); log per-epoch metrics via mlflow.log_metrics({'train_loss': avg, 'val_loss': val_loss, 'val_acc': val_acc}, step=epoch). Set mlflow.set_tracking_uri('file:./mlruns') for purely local storage. This directly enables the reproducibility check: two runs with the same seed produce runs whose metric CSVs can be diffed programmatically."
+    }
+  ],
+  "stage_handoff_notes": "peer-python-reviewer's finding that TabularDataset reinitializes random state on every instantiation is correct; my reproducibility finding builds on it — the deeper issue is that there is no global seed at all. The print() logging-idiom finding from peer-python-reviewer is separate from my experiment-tracking finding (no persistent run record, no tracker). DataLoader missing num_workers and optimizer.zero_grad() without set_to_none=True are team-performance-reviewer's lane. The verdict is block because all three high findings falsify stated project success criteria — the code cannot produce a metric that satisfies any of the three measurable aims in its current state."
+}

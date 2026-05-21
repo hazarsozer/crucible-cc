@@ -1,0 +1,38 @@
+{
+  "persona": "team-performance-reviewer",
+  "stage": 2,
+  "model_used": "claude-sonnet-4-6",
+  "started_at": "2026-05-12T00:00:00Z",
+  "completed_at": "2026-05-12T00:00:20Z",
+  "scope_assessed": ["src/train.py", "src/model.py", "src/data.py", "tests/test_train.py"],
+  "verdict": "concerns",
+  "score": 5,
+  "summary_quote": "DataLoader with num_workers=0 leaves the GPU idle during every batch load — the dominant throughput bottleneck for the 30-minute wall-clock constraint. Zero_grad without set_to_none=True adds avoidable per-step allocation overhead. Both are mechanical one-line fixes.",
+  "findings": [
+    {
+      "severity": "high",
+      "category": "synchronous-io-hot-path",
+      "title": "DataLoader num_workers=0 serializes CPU data loading with GPU compute, leaving GPU idle each batch",
+      "evidence": {"path": "src/train.py", "line_start": 33, "line_end": 33},
+      "explanation": "With num_workers=0 (the default), PyTorch data loading is single-threaded and synchronous — the GPU sits idle while the CPU fetches, converts, and pins the next batch. On an RTX 4070 Super with a CPU-bound data pipeline, this can dominate total training time. Even for this synthetic in-memory dataset, adding num_workers eliminates the serialization penalty as the dataset grows or as preprocessing is added. The TabularDataset.__getitem__ currently does a numpy->tensor conversion per sample on every access; with num_workers=0 this runs on the main thread between GPU steps.",
+      "suggestion": "Set num_workers in the DataLoader constructor: `DataLoader(dataset, batch_size=cfg['batch_size'], shuffle=True, num_workers=cfg.get('num_workers', 2), pin_memory=True)`. Add 'num_workers': 2 to the config. pin_memory=True is a free win on CUDA hosts — it enables async host-to-device transfers. Use persistent_workers=True if epoch overhead from worker respawn becomes measurable."
+    },
+    {
+      "severity": "medium",
+      "category": "gc-pressure",
+      "title": "optimizer.zero_grad() without set_to_none=True allocates fresh zero tensors every step",
+      "evidence": {"path": "src/train.py", "line_start": 41, "line_end": 41},
+      "explanation": "Without set_to_none=True, zero_grad() fills each gradient tensor with zeros via a memset-equivalent operation, allocating new zeroed storage per parameter per step. With set_to_none=True, PyTorch simply sets .grad = None, skipping the allocation entirely. Over 10,000 steps, this is cumulative unnecessary allocation pressure on the GPU memory allocator. The fix is a one-character change and is explicitly recommended in PyTorch documentation since 1.7.",
+      "suggestion": "Change optimizer.zero_grad() to optimizer.zero_grad(set_to_none=True) at src/train.py:41. This is the PyTorch-recommended default for new code and has no correctness risk for standard Adam optimizers."
+    },
+    {
+      "severity": "medium",
+      "category": "missing-cache",
+      "title": "TabularDataset converts numpy arrays to tensors on every __getitem__ call rather than pre-converting at construction time",
+      "evidence": {"path": "src/data.py", "line_start": 18, "line_end": 19},
+      "explanation": "__getitem__ calls torch.from_numpy(self.x[idx]) and torch.tensor(self.y[idx]) on every sample access. With a batch size of 64 and 10,000 samples, a single epoch calls __getitem__ 10,000 times. Pre-converting the entire x and y arrays to tensors once at construction time eliminates per-sample conversion overhead entirely. At 10,000 samples with 32 features, self.x is 1.28 MB — trivially small to hold as a tensor.",
+      "suggestion": "In TabularDataset.__init__, replace the numpy array construction with direct tensor construction: `self.x = torch.randn(n_samples, input_dim)` and `self.y = torch.randint(0, n_classes, (n_samples,))`. Then __getitem__ becomes `return self.x[idx], self.y[idx]` — a pure tensor slice with no per-call conversion. This also addresses the peer-python-reviewer finding about TabularDataset reinitializing random state, since seeding torch before construction makes the dataset fully deterministic."
+    }
+  ],
+  "stage_handoff_notes": "The dominant bottleneck for the 30-minute wall-clock constraint is num_workers=0 (finding 1); the zero_grad and __getitem__ concerns are secondary and will matter more once the data loading bottleneck is resolved. The peer-python-reviewer flagged that TabularDataset reinitializes random numpy state on every instantiation — fixing __getitem__ to use torch tensors (finding 3 above) naturally moves the random source to torch, where seeding is simpler and consistent with the reproducibility goal. Once num_workers > 0 is in place, a torch.profiler trace over one epoch would confirm whether the CPU/GPU overlap is working and surface the next bottleneck tier."
+}

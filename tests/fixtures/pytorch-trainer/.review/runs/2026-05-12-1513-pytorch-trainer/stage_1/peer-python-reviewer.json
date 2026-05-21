@@ -1,0 +1,65 @@
+{
+  "persona": "peer-python-reviewer",
+  "stage": 1,
+  "model_used": "claude-haiku-4-5-20251001",
+  "started_at": "2026-05-12T00:00:00Z",
+  "completed_at": "2026-05-12T00:00:15Z",
+  "scope_assessed": [
+    "src/train.py",
+    "src/model.py",
+    "src/data.py",
+    "tests/test_train.py"
+  ],
+  "verdict": "concerns",
+  "score": 6,
+  "summary_quote": "Production-like function uses print() for metrics; inference helper uses deprecated torch.no_grad() decorator; TabularDataset reinitializes random state on every instantiation, breaking reproducibility.",
+  "findings": [
+    {
+      "severity": "medium",
+      "category": "logging",
+      "title": "Use logging instead of print() for epoch metrics in reusable train() function",
+      "evidence": {
+        "path": "src/train.py",
+        "line_start": 54,
+        "line_end": 55
+      },
+      "explanation": "The train() function emits per-epoch metrics via print(), but this is a reusable function that will be imported by other modules (tests, notebooks, tuning harnesses). print() writes to stdout with no level, no timestamp, no logger name, and no way for callers to silence or redirect output. Once train() is called from an experiment orchestrator or an autotune script, the metric noise becomes inescapable.",
+      "suggestion": "Add logger = logging.getLogger(__name__) at module top, then replace the print calls with logger.info calls. Configure logging at the __main__ entrypoint, not inside train()."
+    },
+    {
+      "severity": "medium",
+      "category": "idiom",
+      "title": "Use torch.inference_mode() context manager instead of @torch.no_grad() decorator",
+      "evidence": {
+        "path": "src/model.py",
+        "line_start": 21
+      },
+      "explanation": "The predict() function uses @torch.no_grad() as a decorator, which is the older, less idiomatic pattern. The modern PyTorch recommendation is to use `with torch.inference_mode():` inside the function body. inference_mode() is faster (it also disables view tracking) and clearer about intent.",
+      "suggestion": "Remove the @torch.no_grad() decorator. Inside predict(), wrap the logic in `with torch.inference_mode():`. This is the idiomatic pattern in modern PyTorch codebases."
+    },
+    {
+      "severity": "medium",
+      "category": "correctness",
+      "title": "TabularDataset reinitializes random state on every instantiation, breaking reproducibility",
+      "evidence": {
+        "path": "src/data.py",
+        "line_start": 13,
+        "line_end": 17
+      },
+      "explanation": "TabularDataset.__init__ calls np.random.randn() and np.random.randint() without seeding, meaning every instance of TabularDataset gets different synthetic data. If load_full_dataset() is called twice, the dataset changes each time. This silently breaks the reproducibility goal stated in aims.",
+      "suggestion": "Ensure np.random is seeded before TabularDataset is instantiated. In train.py, add `np.random.seed(42)` and `torch.manual_seed(42)` at the start of train(). Alternatively, pass a seed parameter to TabularDataset.__init__ and use np.random.RandomState(seed) as an instance variable to avoid global state."
+    },
+    {
+      "severity": "low",
+      "category": "idiom",
+      "title": "Use .eval() shorthand instead of model.train(False) for clarity",
+      "evidence": {
+        "path": "src/model.py",
+        "line_start": 27
+      },
+      "explanation": "Inside predict(), model.train(False) is used to set the model to inference mode. The standard, idiomatic pattern in PyTorch is model.eval(), which does the same thing but is clearer and shorter.",
+      "suggestion": "Replace model.train(False) with model.eval()."
+    }
+  ],
+  "stage_handoff_notes": "File is otherwise idiomatic for the Python lens: type hints present, f-strings used, pathlib available, no wildcard imports, no mutable default arguments, no bare excepts. The more serious reproducibility gaps (missing torch.manual_seed, DataLoader num_workers, optimizer.zero_grad set_to_none) belong to team-data-ml-reviewer and team-performance-reviewer."
+}

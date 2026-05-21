@@ -393,16 +393,18 @@ Override behavior is deferred to v0.2.0; v0.1.0 reads the file but does not yet 
 
 ## Roadmap
 
-### v0.1.0 (current)
+### v0.1.0
 - Full 23-persona library
 - `/crucible:run`, `/crucible:aims`, `/crucible:history`
 - Three demo example reports
 - Schema + structural validation tests
 - Self-hosted marketplace install (`/plugin marketplace add hazarsozer/crucible-cc` + `/plugin install crucible@crucible`)
 
-### v0.1.1 (incremental)
-- Deterministic Python renderer for the final markdown report (replaces LLM-driven template substitution — eliminates the template-improvisation regression measured in v0.1.0 Sonnet-main runs).
-- Stronger per-persona examples for common Code Citation Discipline slip sites (PyTorch eval-mode method, standard binary-serializer module name, Node shell-out helpers) to lower the prose discipline slip rate below the measured 25%.
+### v0.1.1 (current)
+- Deterministic Python renderer for the final markdown report at `scripts/render_report.py` — replaces v0.1.0's LLM-driven template substitution that drifted across runs (heading text, metadata block style, persona-block structure all varied). Output is now byte-stable; verified by a checked-in golden test against the pytorch-trainer fixture.
+- Vendored Jinja2 (BSD-3) + MarkupSafe at `scripts/_vendor/` — no `pip install` or `uv add` required on the user's project; Python 3.8+ is the only runtime dependency.
+- Per-persona "WRITE THIS, NOT THAT" examples added to `peer-python-reviewer`, `team-data-ml-reviewer`, and `lead-project-manager` to drop the ~25% lane-discipline slip rate measured on a v0.1.0 verification run.
+- Aggregator-summary drift recovered at render time: when `stage_reports.stage_<N>` is stripped to `{persona, score, verdict}` summaries, the renderer re-hydrates from the sibling `stage_<N>/*.json` files written by per-persona dispatches.
 
 ### v0.2.0 (next)
 - Persona prompt polish (each persona's quality-review backlog)

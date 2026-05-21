@@ -310,7 +310,7 @@ You are running as the Aggregator. Your full system prompt is at agents/aggregat
 
 ## Run metadata (substituted by orchestrator — echo through verbatim; DO NOT modify, DO NOT re-estimate)
 {{
-  "plugin_version": "0.1.0",
+  "plugin_version": "0.1.1",
   "wall_clock_seconds": <WALL_CLOCK_SECONDS>,
   "models_used": <MODELS_USED>,
   "estimated_cost_usd": <ESTIMATED_COST_USD>
@@ -338,19 +338,26 @@ Save the (validated or fallback) final report to `.review/runs/<review_id>/final
 
 ### Write the markdown report file
 
-**Follow `templates/report.md.tpl` exactly — do not improvise the structure, do not invent new headings, do not skip or reorder template sections.** The template defines the canonical Crucible report format; output that deviates from it (different heading text, different metadata block style, additional metadata fields the template doesn't declare) creates inconsistent examples for users and breaks consumers that parse the report. If you are tempted to "improve" the template's wording or add a section it doesn't have, **do not** — open an issue against the template instead and ship the template's actual output for this run.
+**Render the markdown report by invoking the deterministic Python renderer.** Do not assemble the markdown manually — the v0.1.0 pipeline did that and the LLM drifted across runs (heading text, metadata block style, table vs flat bullet structure all varied). v0.1.1 replaces inline substitution with `scripts/render_report.py`, which reads `final-report.json` plus the sibling `stage_<N>/*.json` files, applies `templates/report.md.tpl` via vendored Jinja2, and writes a byte-stable output.
 
-Render by substituting every `{{...}}` placeholder with the corresponding field from the final-report JSON. The template uses Handlebars-like `{{#each ...}} ... {{/each}}` blocks for arrays — iterate the array and emit the inner template once per item, substituting `{{this}}` (or the named field for object arrays) with the current item.
+Run the renderer via Bash:
 
-Crucible does not ship a template engine. Implement the substitution inline as you generate the file:
-- For `{{key}}` placeholders, substitute the JSON value directly. If the value is an object or array, format it as readable inline text (e.g., a comma-separated list for arrays of strings; a key-value list for objects).
-- For `{{#each items}} ... {{/each}}` blocks, emit the inner block once per item.
-- For nested-field references like `{{casting_roster.project_profile.type}}`, walk the dotted path through the JSON.
-- Preserve markdown structure exactly — don't reflow lists or headings, don't change heading levels, don't drop blank lines between sections.
+```bash
+python3 "${CLAUDE_PLUGIN_ROOT}/scripts/render_report.py" \
+  --input "${project_root}/.review/runs/<review_id>/final-report.json" \
+  --output "${project_root}/.review/reports/<review_id>.md"
+```
 
-The first line of the output MUST start with `# Crucible Review — ` (the literal text from the template's line 1) and the metadata block on line 3 MUST use the italic underscore format (`_Review ID: ... · Generated: ... · Project: ..._`), not a bold-list block.
+Claude Code substitutes `${CLAUDE_PLUGIN_ROOT}` to the plugin's absolute install path before the shell sees it, so this works for both installed users (`~/.claude/plugins/cache/<marketplace>/crucible/<version>/`) and developers running from a source checkout. `${project_root}` and `<review_id>` are the values you captured in Setup steps 1–2 — substitute them as literal strings in the Bash command (e.g., `/home/user/my-project/.review/runs/2026-05-21-1530-auth-refactor/final-report.json`) before sending. The renderer's only runtime dependency is Python 3.8+; Jinja2 and MarkupSafe are vendored in `scripts/_vendor/` so no `pip install` or `uv add` is required.
 
-Write the rendered output to `.review/reports/<review_id>.md`. If a PreToolUse Write hook (e.g., `security-guidance`) blocks the write because a finding's text contains a dangerous-pattern substring, retry the same Write once — the hook records the rule in session state on the first hit and the retry succeeds. See `templates/persona-protocol.md` § 5 for the structural discipline that minimizes this case in normal runs.
+If the Bash invocation exits non-zero, inspect stderr to diagnose. The most common causes:
+- Missing `final-report.json` (Stage 4 didn't write it — check the run dir).
+- Schema drift in `final-report.json` (a required key like `key_quotes` is absent — the Aggregator drifted; re-run the Aggregator with stricter format prompt).
+- `python3` not on PATH (rare; report to the user and fall back to manually rendering using `templates/report.md.tpl` as the literal structural spec — but flag the environment gap as a bug).
+
+If a PreToolUse Write hook (e.g., `security-guidance`) blocks the renderer's output file because a finding's text contains a dangerous-pattern substring, re-run the same Bash command once — the hook records the rule in session state on the first hit and the retry succeeds. See `templates/persona-protocol.md` § 5 for the structural discipline personas follow to minimize this case.
+
+**Do not edit the rendered file after the renderer writes it.** Trust the script's output. If the formatting needs to change, the fix lives in `templates/report.md.tpl` or `scripts/render_report.py`, not in post-processing.
 
 ### Print the terminal summary
 

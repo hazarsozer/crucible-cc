@@ -1,0 +1,75 @@
+{
+  "persona": "peer-readability-engineer",
+  "stage": 1,
+  "model_used": "claude-haiku-4-5-20251001",
+  "started_at": "2026-05-12T00:00:00Z",
+  "completed_at": "2026-05-12T00:05:30Z",
+  "scope_assessed": [
+    "src/train.py",
+    "src/model.py",
+    "src/data.py",
+    "tests/test_train.py",
+    "configs/default.yaml"
+  ],
+  "verdict": "concerns",
+  "score": 7,
+  "summary_quote": "load_full_dataset() returns entire dataset with no train/val/test split; train() lacks random seed and docstring; function names mask incomplete responsibility (load_full_dataset should be load_dataset or clarify the 'full' semantic).",
+  "findings": [
+    {
+      "severity": "high",
+      "category": "naming",
+      "title": "load_full_dataset() name obscures missing train/val/test split responsibility",
+      "evidence": {
+        "path": "src/data.py",
+        "line_start": 23
+      },
+      "explanation": "The function name load_full_dataset() uses 'full' to mean 'returns the complete dataset' rather than 'a fully-prepared train/val/test split.' A reader scanning the codebase will see 'full' and assume the dataset is ready for training; they have to read the docstring and function body to discover the split is missing. This is a maintenance hazard: anyone adding a new training path will copy this function and unknowingly reintroduce data leakage.",
+      "suggestion": "Rename to load_dataset() and add a one-sentence module-level comment in data.py explaining that the split is deliberately omitted for now. If the split is a known upcoming task, use a TODO that pins to a tracker: '# TODO(#123): Add train/val/test split before production use.'"
+    },
+    {
+      "severity": "high",
+      "category": "naming",
+      "title": "train() function lacks docstring and hides multiple concerns",
+      "evidence": {
+        "path": "src/train.py",
+        "line_start": 30
+      },
+      "explanation": "The train() function has no docstring, so a reader doesn't know what it does, what it expects, or whether it logs, saves, or returns anything. The module docstring explains that 'no random seed set' is a reproducibility gap, but the function itself has no marker that signals this is deliberate. Without it, the next engineer who touches this code won't see the known issues unless they scroll to the top of the file.",
+      "suggestion": "Add a docstring to train() that lists known limitations: 'Train the MLP on the full dataset. Known gaps (see module header): no random seed, no train/val/test split, no metric logging to disk. These are deliberate for the baseline fixture.'"
+    },
+    {
+      "severity": "medium",
+      "category": "naming",
+      "title": "make_model() is a thin wrapper; consider inlining or naming more precisely",
+      "evidence": {
+        "path": "src/train.py",
+        "line_start": 21
+      },
+      "explanation": "make_model(cfg) takes a config, extracts three keys, and passes them to MLP(). It's one line of actual work wrapped in a function. Thin wrappers like this are noise unless they provide a clear abstraction. Here, the wrapper doesn't hide complexity or enable testing — it just proxies the config keys.",
+      "suggestion": "Either inline make_model() directly into train() as `model = MLP(cfg['input_dim'], cfg['hidden_dim'], cfg['output_dim'])`, or keep it only if you plan to add model-creation logic (e.g., device placement, weight initialization). If you keep it, add a one-line docstring explaining why it exists."
+    },
+    {
+      "severity": "medium",
+      "category": "naming",
+      "title": "TabularDataset generates data in __init__; name should signal this is synthetic",
+      "evidence": {
+        "path": "src/data.py",
+        "line_start": 10
+      },
+      "explanation": "TabularDataset.__init__() generates random data on the fly. The name doesn't signal this; a reader might assume it loads from disk or expects an external numpy array. The docstring says 'toy synthetic', but the class name alone doesn't carry that signal. This is a readability problem because someone refactoring the data pipeline might try to call load_full_dataset(path=...) and wonder why the path argument is ignored.",
+      "suggestion": "Rename the class to SyntheticTabularDataset or add a leading comment in __init__: 'Generate a random tabular dataset on the fly. n_samples, input_dim, and n_classes control the generation; path is not used.'"
+    },
+    {
+      "severity": "low",
+      "category": "naming",
+      "title": "predict() helper in model.py has no context about when to use it",
+      "evidence": {
+        "path": "src/model.py",
+        "line_start": 23
+      },
+      "explanation": "The predict() function is defined in model.py but is never called anywhere in the codebase (not in train.py, not in tests). It's a utility that might be used later, but its presence without context makes a reader wonder if it's dead code or a future hook.",
+      "suggestion": "Either remove it if it's not yet needed (git history preserves it), or add a module-level comment explaining its role. If tests don't exist yet, just remove it and re-add when the first inference use case lands."
+    }
+  ],
+  "stage_handoff_notes": "The scope is cohesive and short enough that readability issues are structural rather than overwhelming. The main concern is that load_full_dataset() and the lack of train/val/test split are intentional (per the project aims and module docstring), but the naming masks that intent from future readers. No deep nesting, no long functions, no dead code blocks — the codebase reads cleanly structurally. The predict() helper is the only mild dead-code signal."
+}

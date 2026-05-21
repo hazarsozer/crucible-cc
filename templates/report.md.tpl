@@ -1,130 +1,55 @@
-# Crucible Review — {{review_scope_description}}
+# Crucible Review — {{ title }}
 
-_Review ID: {{review_id}} · Generated: {{completed_at}} · Project: {{project_type}}_
+_Review ID: {{ review_id }} · Generated: {{ completed_at }} · Project: {{ project_label }}_
 
-## Final Verdict
+---
 
-**Score:** {{final_score}}/10
-**Verdict:** {{final_verdict}}
+## Verdict
 
-{{verdict_reasoning}}
+**{{ verdict_label }} — {{ final_score_label }}/10**
+
+{{ verdict_reasoning }}
+
+---
 
 ## Executive Summary
 
-{{executive_summary}}
+{{ executive_summary }}
+
+---
 
 ## What's Good
 
-{{#each what_is_good}}
-- {{this}}
-{{/each}}
+{{ what_is_good_block }}
+
+---
 
 ## What's Concerning
 
-{{#each what_is_concerning}}
-- {{this}}
-{{/each}}
+{{ what_is_concerning_block }}
 
-## Key Notes from the Committee
+---
 
-{{#each key_quotes}}
-### {{persona}}
-> {{quote}}
+## Key Notes
 
-{{/each}}
+{{ key_notes_block }}
 
-## Stage 0 — Profiler
+---
 
-### Project profile
-- **Type:** {{casting_roster.project_profile.type}}
-- **Languages:** {{casting_roster.project_profile.languages}}
-- **Frameworks:** {{casting_roster.project_profile.frameworks}}
-- **Datastores:** {{casting_roster.project_profile.datastores}}
+## Stage Reports
 
-### Review scope
-- **Kind:** {{casting_roster.review_scope.kind}}
-- **Description:** {{casting_roster.review_scope.description}}
-- **Files:** {{casting_roster.review_scope.files}}
+{{ stage_reports_block }}## Aims Snapshot
 
-### Casting reasoning
-{{casting_roster.casting_reasoning}}
+{{ aims_blockquote }}
 
-## Stage 1 — Peer Review
+---
 
-{{#each stage_reports.stage_1}}
-### {{persona}} ({{model_used}})
+## Committee
 
-**Verdict:** {{verdict}} · **Score:** {{score}}/10
+**Stage 1:** {{ committee_stage_1 }}
 
-> {{summary_quote}}
+**Stage 2:** {{ committee_stage_2 }}
 
-#### Findings
+**Stage 3:** {{ committee_stage_3 }}
 
-{{#each findings}}
-- **[{{severity}}]** {{title}} — `{{evidence.path}}:{{evidence.line_start}}{{#if evidence.line_end}}-{{evidence.line_end}}{{/if}}`{{#if evidence.symbol_name}} (`{{evidence.symbol_name}}`){{/if}}
-  - {{explanation}}
-  - **Suggestion:** {{suggestion}}
-
-{{/each}}
-
-#### Stage handoff notes
-{{stage_handoff_notes}}
-
-{{/each}}
-
-## Stage 2 — Cross-functional
-
-{{#each stage_reports.stage_2}}
-### {{persona}} ({{model_used}})
-
-**Verdict:** {{verdict}} · **Score:** {{score}}/10
-
-> {{summary_quote}}
-
-#### Findings
-
-{{#each findings}}
-- **[{{severity}}]** {{title}} — `{{evidence.path}}:{{evidence.line_start}}{{#if evidence.line_end}}-{{evidence.line_end}}{{/if}}`{{#if evidence.symbol_name}} (`{{evidence.symbol_name}}`){{/if}}
-  - {{explanation}}
-  - **Suggestion:** {{suggestion}}
-
-{{/each}}
-
-#### Stage handoff notes
-{{stage_handoff_notes}}
-
-{{/each}}
-
-## Stage 3 — Leadership
-
-{{#each stage_reports.stage_3}}
-### {{persona}} ({{model_used}})
-
-**Verdict:** {{verdict}} · **Score:** {{score}}/10
-
-> {{summary_quote}}
-
-#### Findings
-
-{{#each findings}}
-- **[{{severity}}]** {{title}} — `{{evidence.path}}:{{evidence.line_start}}{{#if evidence.line_end}}-{{evidence.line_end}}{{/if}}`{{#if evidence.symbol_name}} (`{{evidence.symbol_name}}`){{/if}}
-  - {{explanation}}
-  - **Suggestion:** {{suggestion}}
-
-{{/each}}
-
-#### Stage handoff notes
-{{stage_handoff_notes}}
-
-{{/each}}
-
-## Aims Snapshot
-
-{{aims_snapshot}}
-
-## Run Metadata
-
-- **Plugin version:** {{metadata.plugin_version}}
-- **Models used:** {{metadata.models_used}}
-
-_Wall-clock time and API cost are not displayed here. Claude Code already reports both at the end of every session (and via `/status` on demand) using its own measurements, which are more accurate than anything a plugin skill can compute from inside the run. Crucible does not duplicate them._
+_Models used: {{ models_used_label }} · Plugin: v{{ plugin_version }}_
