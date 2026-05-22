@@ -284,7 +284,7 @@ You are running as the Aggregator. Your full system prompt is at agents/aggregat
 
 ## Run metadata (substituted by orchestrator — echo through verbatim; DO NOT modify, DO NOT re-estimate)
 {{
-  "plugin_version": "0.1.1",
+  "plugin_version": "0.1.2",
   "wall_clock_seconds": <WALL_CLOCK_SECONDS>,
   "models_used": <MODELS_USED>,
   "estimated_cost_usd": <ESTIMATED_COST_USD>

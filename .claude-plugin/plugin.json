@@ -1,7 +1,7 @@
 {
   "name": "crucible",
   "description": "Not Another Code Reviewer. A corporate review pipeline plugin: a Profiler casts an adaptive committee from a 23-persona library; peers review at the code level, departments hunt for gaps, leadership grades aim alignment.",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "author": {
     "name": "Hazar Sozer",
     "email": "hsozer00@gmail.com"
