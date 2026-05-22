@@ -96,7 +96,7 @@ Crucible runs **5 stages and 4–8 specialized agents** per review. It is not an
 
 For those, **call a specific persona directly** via the Task tool — `crucible:peer-python-reviewer`, `crucible:team-security-reviewer`, `crucible:lead-senior-architect`, etc. The full list of 23 personas is below; each is independently invokable. The pipeline is the heavyweight; individual personas are the scalpel.
 
-Measured cost and wall-time ranges (from runs on a 7-file Next.js fixture) are in the [Costs](#costs) section below. A recommended-scope threshold (e.g. "≥N files") will land in v0.1.1 once we have measured runs on larger projects and other project types.
+Measured cost and wall-time ranges (from runs on a 7-file Next.js fixture) are in the [Costs](#costs) section below. A recommended-scope threshold (e.g. "≥N files") will land in a future release once we have measured runs on larger projects and other project types.
 
 ---
 
@@ -331,7 +331,7 @@ We attempted to move orchestration into a dedicated `coordinator` subagent so th
 
 **v0.1.0 ships main-thread orchestration with the cost-preview prompt** instead. The cost-vs-orchestrator-model coupling stays, but the user is warned and can opt to switch model before the run.
 
-**Worth noting: Haiku as the main-thread orchestrator works** (verification on `pytorch-trainer`, 2026-05-12: $3.26 total cost, real Sonnet ($1.04) and Opus ($1.42) subagent dispatches measured, no impersonation). The impersonation failure mode was specific to Haiku running *inside* a dispatched coordinator subagent, where the SKILL.md `Task(...)` blocks read as workflow descriptions rather than tool invocations. On the main thread Haiku correctly invokes the Task tool. The trade-off is template adherence: Haiku's rendered markdown report improvises section names, abbreviates per-persona findings to one-liners, and may skip the Run Metadata block. Use Haiku for cost-sensitive runs where the executive summary is the primary output; use Sonnet for the best balance of cost and report polish, with the caveat that Sonnet has been measured occasionally improvising the report template too (see CHANGELOG "Known limitations" — a deterministic Python renderer is planned for v0.1.1 to eliminate this).
+**Worth noting: Haiku as the main-thread orchestrator works** (verification on `pytorch-trainer`, 2026-05-12: $3.26 total cost, real Sonnet ($1.04) and Opus ($1.42) subagent dispatches measured, no impersonation). The impersonation failure mode was specific to Haiku running *inside* a dispatched coordinator subagent, where the SKILL.md `Task(...)` blocks read as workflow descriptions rather than tool invocations. On the main thread Haiku correctly invokes the Task tool. The trade-off is template adherence: Haiku's rendered markdown report improvises section names, abbreviates per-persona findings to one-liners, and may skip the Run Metadata block. Use Haiku for cost-sensitive runs where the executive summary is the primary output; use Sonnet for the best balance of cost and report polish, with the caveat that Sonnet has been measured occasionally improvising the report template too (see CHANGELOG "Known limitations" — the deterministic Python renderer in v0.1.1 eliminated this drift).
 
 If a future architecture can solve both subagent interactivity and tool-use discipline simultaneously, the coordinator-subagent pattern is still the right answer — it's recorded in the v0.2.0 roadmap.
 
@@ -348,7 +348,7 @@ The subagent shares are roughly constant across orchestrator models; the orchest
 
 - **Within-fixture verbosity variance is the dominant noise source.** One of the three Next.js beta runs wrote a ~30% chattier report — same cast, same scope, ~$1.50 over the others.
 - **Cross-project variance is small for similar-sized fixtures.** ML pipelines cast 8 personas (Profiler skips Frontend, Database, Network, Privacy); web/API projects cast 10. Composition shifts substantially per project type.
-- **Larger projects will cost more.** Every new file adds to the cache footprint dispatched into each Stage 1/2 persona's prompt. Projects with more files, more languages, or stricter aims will pull a wider cast and bigger payloads. Larger-project cost data (codebases beyond 5–7 files) lands in v0.1.1.
+- **Larger projects will cost more.** Every new file adds to the cache footprint dispatched into each Stage 1/2 persona's prompt. Projects with more files, more languages, or stricter aims will pull a wider cast and bigger payloads. Larger-project cost data (codebases beyond 5–7 files) lands in a future release.
 
 ### Plan compatibility
 
@@ -400,12 +400,15 @@ Override behavior is deferred to v0.2.0; v0.1.0 reads the file but does not yet 
 - Schema + structural validation tests
 - Self-hosted marketplace install (`/plugin marketplace add hazarsozer/crucible-cc` + `/plugin install crucible@crucible`)
 
-### v0.1.1 (current)
+### v0.1.1
 - Deterministic Python renderer for the final markdown report at `scripts/render_report.py` — replaces v0.1.0's LLM-driven template substitution that drifted across runs (heading text, metadata block style, persona-block structure all varied). Output is now byte-stable; verified by a checked-in golden test against the pytorch-trainer fixture.
 - Vendored Jinja2 (BSD-3) + MarkupSafe at `scripts/_vendor/` — no `pip install` or `uv add` required on the user's project; Python 3.8+ is the only runtime dependency.
 - Per-persona "WRITE THIS, NOT THAT" examples added to `peer-python-reviewer`, `team-data-ml-reviewer`, and `lead-project-manager` to drop the ~25% lane-discipline slip rate measured on a v0.1.0 verification run.
 - Aggregator-summary drift recovered at render time: when `stage_reports.stage_<N>` is stripped to `{persona, score, verdict}` summaries, the renderer re-hydrates from the sibling `stage_<N>/*.json` files written by per-persona dispatches.
 - Cost preview externalized to `templates/cost-preview.txt`. The `/crucible:run` cost preview is now `cat`-ed from a file instead of inlined in SKILL.md and printed by the LLM — eliminates the floor-lowering drift observed during the v0.1.1 wet test (Sonnet was rendering `$4.50-7` as `$0.50-7`).
+
+### v0.1.2 (current)
+- Cost-preview visibility hint: a one-line assistant-text hint emitted before the `cat` so users see the Ctrl+O instruction above the (otherwise-collapsed) Bash pill in Claude Code's default UI. Hybrid pattern — assistant-text hint for visibility + deterministic tool output for byte-stability. Triggered by 2026-05-22 wet-test feedback that v0.1.1's externalized preview was correct but invisible without manual verbose mode.
 
 ### v0.2.0 (next)
 - Persona prompt polish (each persona's quality-review backlog)
